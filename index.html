@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Star Destroyer" />
+  <meta name="format-detection" content="telephone=no" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+  <title>Star Destroyer</title>
+</head>
+<body>
+  <div id="app">
+    <div id="probe"></div>
+    <canvas id="screen" width="224" height="288" aria-label="Area di gioco"></canvas>
+    <div id="crt"></div>
+
+    <div id="bar">
+      <button id="bStart" class="ctl" aria-label="Start">START</button>
+      <button id="bPause" class="ctl" aria-label="Pausa">II</button>
+      <button id="bMute" class="ctl" aria-label="Audio">♪</button>
+      <button id="bSettings" class="ctl" aria-label="Impostazioni">⚙</button>
+    </div>
+
+    <div id="pad" class="zone"><span>◀ &nbsp; TRASCINA &nbsp; ▶</span></div>
+    <div id="btnL" class="zone dir">◀</div>
+    <div id="btnR" class="zone dir">▶</div>
+    <div id="fire" class="zone">FIRE</div>
+
+    <div id="tap" class="overlay">
+      <div class="tap-box">
+        <div class="tap-title">STAR DESTROYER</div>
+        <div class="tap-blink">TAP TO START</div>
+        <div class="tap-sub">tocca per attivare l'audio</div>
+      </div>
+    </div>
+
+    <div id="settings" class="overlay hidden" role="dialog" aria-label="Impostazioni">
+      <div class="panel">
+        <h2>IMPOSTAZIONI</h2>
+        <label>Controlli
+          <select id="sControls"><option value="drag">Trascinamento</option><option value="buttons">Pulsanti ◀ ▶</option></select>
+        </label>
+        <label>Trascinamento
+          <select id="sDragMode"><option value="relative">Relativo</option><option value="absolute">Assoluto</option></select>
+        </label>
+        <label>Sensibilità <span id="sSensV"></span>
+          <input id="sSens" type="range" min="0.5" max="3" step="0.1" />
+        </label>
+        <label class="row"><input id="sAuto" type="checkbox" /> Auto-fire tenendo premuto</label>
+        <label class="row"><input id="sVibe" type="checkbox" /> Vibrazione (Android)</label>
+        <label class="row"><input id="sCrt" type="checkbox" /> Effetto CRT / scanline</label>
+        <button id="sClose" class="ctl wide">CHIUDI</button>
+      </div>
+    </div>
+
+    <div id="install" class="overlay hidden">
+      <div class="panel">
+        <h2>GIOCA A SCHERMO INTERO</h2>
+        <p id="installText"></p>
+        <button id="installBtn" class="ctl wide hidden">INSTALLA</button>
+        <button id="installClose" class="ctl wide">OK</button>
+      </div>
+    </div>
+
+    <div id="rotate" class="hidden">Ruota il telefono in verticale per la migliore esperienza</div>
+  </div>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

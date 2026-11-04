@@ -1,0 +1,7 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+tests/e2e/screens/
+# Materiale di riferimento di terze parti: non va pubblicato
+immagini/
