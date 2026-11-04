@@ -1,0 +1,27 @@
+// Screenshot di scenari specifici (raggio traente, nave doppia, stage bonus, risultati).
+import { chromium, devices } from '@playwright/test';
+const b = await chromium.launch();
+const p = await b.newPage({ ...devices['Pixel 7'] });
+await p.addInitScript(() => localStorage.setItem('sd.installhint', '1'));
+await p.goto('http://localhost:4199/');
+await p.locator('#tap').click();
+const ev = (f) => p.evaluate(f);
+await ev(() => { const g = __sd.game; g.startGame('game'); g.skipToPlay(); for (let i = 0; i < 1400 && !g.wavesDone; i++) g.step(); for (let i = 0; i < 300; i++) g.step(); g.attacksOn = false; for (const e of g.enemies) if (e.active && e.state !== 0) { e.state = 3; } for (const x of g.eBullets) x.active = false; g.playerPhase = 'alive'; g.lives = 3;
+  const w = g.enemies.findIndex(e => e.active && e.kind === 2 && e.state === 3); g.launchBeam(w); window.__w = w; });
+await p.waitForFunction(() => __sd.game.enemies[__w].state === 9 && __sd.game.enemies[__w].t > 60, null, { timeout: 20000 });
+await ev(() => { __sd.game.px = __sd.game.enemies[__w].x; });
+await p.waitForTimeout(700);
+await p.screenshot({ path: 'tests/e2e/screens/scene-beam.png' });
+await p.waitForFunction(() => __sd.game.capState === 2, null, { timeout: 20000 });
+await p.waitForTimeout(300);
+await p.screenshot({ path: 'tests/e2e/screens/scene-captured.png' });
+await ev(() => { const g = __sd.game; g.dual = true; g.stage = 7; g.beginStage(); });
+await p.waitForTimeout(6000);
+await p.screenshot({ path: 'tests/e2e/screens/scene-bonus.png' });
+await ev(() => { const g = __sd.game; g.bonusHits = 40; g.bonusTotal = 40; g.setPhase('bonusResults'); });
+await p.waitForTimeout(2000);
+await p.screenshot({ path: 'tests/e2e/screens/scene-perfect.png' });
+await ev(() => { const g = __sd.game; g.shots = 312; g.hits = 187; g.setPhase('results'); });
+await p.waitForTimeout(500);
+await p.screenshot({ path: 'tests/e2e/screens/scene-results.png' });
+await b.close();
