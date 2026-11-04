@@ -8,7 +8,9 @@ export const GAME_TITLE = 'STAR DESTROYER';
 
 // ── Schermo ────────────────────────────────────────────────────────────────
 export const SCREEN_W = 224;
+/** Altezza logica BASE (formato arcade 3:4). Sui telefoni il campo si allunga fino a MAX_FIELD_H. */
 export const SCREEN_H = 288;
+export const MAX_FIELD_H = 560;
 export const TICK_HZ = 60;
 export const TICK_MS = 1000 / TICK_HZ;
 /** Massimo numero di tick recuperati in un singolo frame (evita la "spirale della morte"). */

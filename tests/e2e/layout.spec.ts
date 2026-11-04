@@ -32,16 +32,27 @@ test('layout: niente scroll, canvas in proporzione e dentro lo schermo, nessun c
       vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio,
       sw: document.documentElement.scrollWidth, sh: document.documentElement.scrollHeight,
       c: { x: c.left, y: c.top, w: c.width, h: c.height },
+      logicalH: (document.getElementById('screen') as HTMLCanvasElement).height,
+      portrait: document.getElementById('app')!.classList.contains('portrait'),
       controllers: document.querySelectorAll('#fire, #pad, #btnL, #btnR, .zone').length,
       touch: document.getElementById('app')!.classList.contains('touch'),
     };
   });
   expect(m.sw).toBeLessThanOrEqual(m.vw);
   expect(m.sh).toBeLessThanOrEqual(m.vh);
-  expect(Math.abs(m.c.w / m.c.h - 224 / 288)).toBeLessThan(0.01);
+  // pixel quadrati: proporzioni del canvas = proporzioni logiche 224 × altezza del campo
+  expect(Math.abs(m.c.w / m.c.h - 224 / m.logicalH)).toBeLessThan(0.01);
+  if (m.touch && m.portrait) {
+    // telefono in verticale: il gioco riempie tutto lo schermo, nessuna fascia nera
+    expect(m.logicalH).toBeGreaterThan(288);
+    expect(m.c.w).toBeGreaterThan(m.vw - 1);
+    // al massimo mezzo pixel logico di differenza dovuto all'arrotondamento
+    expect(Math.abs(m.c.h - m.vh)).toBeLessThanOrEqual(m.c.w / 224 / 2 + 0.5);
+  }
   expect(m.c.x).toBeGreaterThanOrEqual(0);
+  expect(m.c.y).toBeGreaterThanOrEqual(-(m.c.w / 224 / 2) - 0.5);
   expect(m.c.x + m.c.w).toBeLessThanOrEqual(m.vw + 0.5);
-  expect(m.c.y + m.c.h).toBeLessThanOrEqual(m.vh + 0.5);
+  expect(m.c.y + m.c.h).toBeLessThanOrEqual(m.vh + m.c.w / 224 / 2 + 0.5);
   // centrato orizzontalmente
   expect(Math.abs(m.c.x + m.c.w / 2 - m.vw / 2)).toBeLessThan(2);
   // niente controller a schermo: si gioca col dito su tutta la superficie
@@ -135,5 +146,33 @@ test('in partita: niente frecce, solo pausa → menu HOME / MUSICA / RIPRENDI', 
   await expect(page.locator('#pauseMenu')).toBeHidden();
   expect(await page.evaluate(() => (window as any).__sd.game.mode)).toBe('title');
   await expect(page.locator('#homeStart')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('telefono con notch: stelle a tutto schermo, HUD e nave nella zona sicura', async ({ page }, info) => {
+  test.skip(!/iphone-15-pro-max|pixel-7/.test(info.project.name), 'basta un telefono iOS e uno Android');
+  const errors: string[] = [];
+  await boot(page, errors);
+  // simula le safe-area di un iPhone con Dynamic Island (l'emulatore non le fornisce)
+  await page.addStyleTag({ content: '#probe{padding:59px 0 34px 0 !important}' });
+  await page.evaluate(() => (window as any).__sd.relayout());
+  await page.locator('#homeStart').click();
+  await page.waitForFunction(() => (window as any).__sd.game.playerPhase === 'alive', null, { timeout: 30000 });
+  const m = await page.evaluate(() => {
+    const g = (window as any).__sd.game;
+    const c = document.getElementById('screen')!.getBoundingClientRect();
+    const p = document.getElementById('bPause')!.getBoundingClientRect();
+    const k = c.width / 224;
+    return { vh: innerHeight, vw: innerWidth, c: { y: c.top, h: c.height, w: c.width }, pauseTop: p.top,
+      shipBottom: c.top + (g.py + 8) * k, formTop: c.top + g.formation.top * k, it: g.insetTop, ib: g.insetBottom };
+  });
+  expect(m.c.y).toBeLessThanOrEqual(1);          // il canvas parte dal bordo alto…
+  expect(m.c.y + m.c.h).toBeGreaterThan(m.vh - 3); // …e arriva al bordo basso
+  expect(m.it).toBeGreaterThan(0);
+  expect(m.ib).toBeGreaterThan(0);
+  expect(m.pauseTop).toBeGreaterThanOrEqual(59);
+  expect(m.formTop).toBeGreaterThan(59);
+  expect(m.shipBottom).toBeLessThanOrEqual(m.vh - 34);
+  await page.screenshot({ path: `${shotDir}/${info.project.name}-notch.png` });
   expect(errors).toEqual([]);
 });

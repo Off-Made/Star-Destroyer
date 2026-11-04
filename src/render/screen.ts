@@ -4,7 +4,7 @@
  * Non c'è nessun controller: TUTTO lo schermo (canvas e spazio libero) è superficie di
  * tocco. Rispetta le safe-area (notch, Dynamic Island, barra home).
  */
-import { SCREEN_W, SCREEN_H } from '../config';
+import { SCREEN_W, SCREEN_H, MAX_FIELD_H } from '../config';
 
 export interface LayoutEls {
   app: HTMLElement;
@@ -23,6 +23,11 @@ export interface LayoutResult {
   cssH: number;
   left: number;
   top: number;
+  /** Altezza logica del campo (288 = formato arcade; di più sui telefoni). */
+  fieldH: number;
+  /** Fasce di area NON sicura (notch / barra Home) dentro il campo, in pixel logici. */
+  insetTop: number;
+  insetBottom: number;
   portrait: boolean;
   integer: boolean;
 }
@@ -52,27 +57,48 @@ export function layout(els: LayoutEls, touch: boolean): LayoutResult {
   const availW = vw - sl - sr, availH = vh - st - sb;
   const portrait = availH >= availW * 1.05;
 
-  // stessa dimensione del canvas in home e in partita (niente "salti" all'avvio)
-  const { scale, integer } = computeScale(availW, availH, dpr);
-  const cssW = (SCREEN_W * scale) / dpr, cssH = (SCREEN_H * scale) / dpr;
-  const x = sl + (availW - cssW) / 2;
-  // telefono in verticale: canvas in alto, lo spazio sotto resta libero per il dito
-  const y = touch && portrait ? st + Math.max(0, Math.min(6, availH - cssH)) : st + (availH - cssH) / 2;
+  // Telefono in verticale: il campo si ALLUNGA per riempire tutto lo schermo (larghezza 224
+  // logici a tutta larghezza, altezza calcolata sulle proporzioni del telefono): niente
+  // barre nere. Altrove (tablet, orizzontale, PC) resta il formato arcade a scala intera.
+  // Il canvas copre TUTTO lo schermo, anche sotto notch e barra Home (lì solo stelle);
+  // il gioco usa le fasce "insetTop/insetBottom" per restare nella zona sicura.
+  let scale: number, integer: boolean, fieldH = SCREEN_H, insetTop = 0, insetBottom = 0;
+  let x: number, y: number, cssW: number, cssH: number, k: number;
+  const tall = touch && portrait && vh / vw > SCREEN_H / SCREEN_W;
+  if (tall) {
+    scale = (vw * dpr) / SCREEN_W;
+    integer = Number.isInteger(scale);
+    k = vw / SCREEN_W;
+    fieldH = Math.min(MAX_FIELD_H, Math.round(vh / k));
+    insetTop = Math.ceil(st / k);
+    insetBottom = Math.ceil(sb / k);
+    cssW = vw; cssH = fieldH * k;
+    x = 0; y = (vh - cssH) / 2;
+  } else {
+    ({ scale, integer } = computeScale(availW, availH, dpr));
+    cssW = (SCREEN_W * scale) / dpr; cssH = (fieldH * scale) / dpr;
+    k = cssW / SCREEN_W;
+    x = sl + (availW - cssW) / 2;
+    y = st + (availH - cssH) / 2;
+  }
+  const safeTop = y + insetTop * k; // dove inizia la zona di gioco sicura (CSS px)
   place(els.canvas, x, y, cssW, cssH);
   place(els.crt, x, y, cssW, cssH);
-  place(els.homeStart, x + cssW * 0.18, y + cssH * (220 / SCREEN_H), cssW * 0.64, cssH * (26 / SCREEN_H));
+  place(els.homeStart, x + cssW * 0.18, safeTop + 220 * k, cssW * 0.64, 26 * k);
   // tastino pausa nell'angolo in alto a destra dell'HUD (lì non passa mai l'azione)
   const ps = Math.max(30, Math.round(cssW * (18 / SCREEN_W)));
-  place(els.pause, x + cssW - ps - 4, y + 3, ps, ps);
+  place(els.pause, x + cssW - ps - 4 - sr, safeTop + 3, ps, ps);
 
   els.app.classList.toggle('touch', touch);
   els.app.classList.toggle('portrait', portrait);
 
-  // barra della home (MUSICA / OPZIONI) e riquadro "come si gioca"
-  const below = vh - sb - (y + cssH);
+  // barra della home (MUSICA / OPZIONI) e riquadro "come si gioca": sotto i contenuti della
+  // home (che occupano i primi 288 pixel logici), sopra il cielo stellato del campo
+  const contentBottom = safeTop + SCREEN_H * k;
+  const below = vh - sb - contentBottom;
   let compactHome = false;
   if (portrait && below >= BAR_H + 14) {
-    const top = y + cssH + 8;
+    const top = contentBottom + 8;
     place(els.bar, sl + 10, top, availW - 20, BAR_H);
     const helpTop = top + BAR_H + 14;
     const helpH = vh - sb - helpTop - 8;
@@ -85,11 +111,11 @@ export function layout(els: LayoutEls, touch: boolean): LayoutResult {
     if (sideW >= 180) place(els.bar, x + cssW + 10, st + 10, Math.min(280, sideW - 20), BAR_H);
     else {
       // altrimenti sulla fascia bassa del canvas (la home nasconde la scritta di piè di pagina)
-      place(els.bar, x + 8, y + cssH * (258 / SCREEN_H), cssW - 16, Math.min(BAR_H, cssH * (26 / SCREEN_H)));
+      place(els.bar, x + 8, safeTop + 258 * k, cssW - 16, Math.min(BAR_H, 26 * k));
       compactHome = true;
     }
     els.homeHelp.classList.add('no-space');
   }
   els.app.classList.toggle('compact-home', compactHome);
-  return { scale, cssW, cssH, left: x, top: y, portrait, integer };
+  return { scale, cssW, cssH, left: x, top: y, fieldH, insetTop, insetBottom, portrait, integer };
 }

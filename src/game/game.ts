@@ -126,6 +126,36 @@ export class Game {
   dual = false;
   /** Posizione verticale della nave: si muove liberamente in tutto il campo. */
   py = C.PLAYER_Y;
+
+  /**
+   * Altezza del campo di gioco in pixel logici (larghezza sempre 224). Sui telefoni è più
+   * alta di 288 per riempire lo schermo: HUD e formazione restano agganciati in alto,
+   * nave, vite, badge e raggio traente in basso; lo spazio in più va in mezzo.
+   */
+  H = C.SCREEN_H;
+  /** Fasce coperte da notch/Dynamic Island (alto) e barra Home (basso), in pixel logici:
+   *  lì si vedono solo le stelle, il gioco resta nella zona sicura. */
+  insetTop = 0;
+  insetBottom = 0;
+  /** Spostamento degli elementi agganciati al fondo rispetto al formato 288. */
+  get dh() { return this.H - this.insetBottom - C.SCREEN_H; }
+  get minY() { return C.PLAYER_MIN_Y + this.insetTop; }
+  get playerY0() { return C.PLAYER_Y + this.dh; }
+  get playerMaxY() { return C.PLAYER_MAX_Y + this.dh; }
+  get exitY() { return this.H + 12; }
+  get beamStopY(): number { return C.BEAM_STOP_Y + this.dh; }
+
+  setFieldHeight(h: number, insetTop = 0, insetBottom = 0) {
+    const nh = Math.max(C.SCREEN_H + insetTop + insetBottom, Math.min(C.MAX_FIELD_H, Math.round(h)));
+    if (nh === this.H && insetTop === this.insetTop && insetBottom === this.insetBottom) return;
+    const oldBottom = this.dh;
+    this.H = nh;
+    this.insetTop = insetTop;
+    this.insetBottom = insetBottom;
+    this.formation.top = C.FORM_TOP + insetTop;
+    // la nave resta alla stessa distanza dal fondo
+    this.py = Math.max(this.minY, Math.min(this.playerMaxY, this.py + this.dh - oldBottom));
+  }
   private fireCd = 0;
   /** Posizione delle esplosioni del giocatore (per la nave doppia). */
 
@@ -189,7 +219,7 @@ export class Game {
     this.hits = 0;
     this.stage = 1;
     this.dual = false;
-    this.py = C.PLAYER_Y;
+    this.py = this.playerY0;
     this.capState = CapState.None;
     this.capHolder = -1;
     this.clearAll();
@@ -424,11 +454,11 @@ export class Game {
           break;
         case ES.Escort: this.escort(e); break;
         case ES.BeamDive: {
-          const target = Math.atan2(C.BEAM_STOP_Y - e.y, e.beamX - e.x);
+          const target = Math.atan2(this.beamStopY - e.y, e.beamX - e.x);
           e.heading = turnToward(e.heading, target, 4 * DEG);
           this.move(e);
-          if (e.y >= C.BEAM_STOP_Y) {
-            e.y = C.BEAM_STOP_Y; e.state = ES.Beam; e.t = 0; e.heading = Math.PI / 2;
+          if (e.y >= this.beamStopY) {
+            e.y = this.beamStopY; e.state = ES.Beam; e.t = 0; e.heading = Math.PI / 2;
             this.sound.beam(true);
           }
           break;
@@ -436,7 +466,7 @@ export class Game {
         case ES.Beam: this.beam(e, i); break;
         case ES.Exit:
           this.move(e);
-          if (e.y > C.EXIT_Y || e.y < -24 || e.x < -24 || e.x > C.SCREEN_W + 24) {
+          if (e.y > this.exitY || e.y < -24 || e.x < -24 || e.x > C.SCREEN_W + 24) {
             if (e.bonus || this.phase === 'gameOver') { e.active = false; e.state = ES.Off; }
             else this.wrapToTop(e, i);
           }
@@ -497,12 +527,12 @@ export class Game {
       e.side = e.x < C.SCREEN_W / 2 ? 1 : -1;
     }
     this.diveFire(e, i);
-    if (e.y > C.EXIT_Y) this.wrapToTop(e, i);
+    if (e.y > this.exitY) this.wrapToTop(e, i);
   }
 
   /** Uscito dal fondo: ricompare in alto e torna in formazione. */
   private wrapToTop(e: Enemy, i: number) {
-    if (e.kind === Kind.Rogue) { e.state = ES.Wait; e.t = 0; e.y = C.EXIT_Y + 40; return; }
+    if (e.kind === Kind.Rogue) { e.state = ES.Wait; e.t = 0; e.y = this.exitY + 40; return; }
     e.y = C.ENTER_Y;
     e.x = this.formation.sx[e.slot];
     e.heading = Math.PI / 2;
@@ -794,7 +824,7 @@ export class Game {
         }
         const maxX = C.PLAYER_MAX_X - (this.dual ? C.DUAL_OFFSET : 0);
         this.px = Math.max(C.PLAYER_MIN_X, Math.min(maxX, this.px + dx));
-        this.py = Math.max(C.PLAYER_MIN_Y, Math.min(C.PLAYER_MAX_Y, this.py + dy));
+        this.py = Math.max(this.minY, Math.min(this.playerMaxY, this.py + dy));
 
         if (this.fireCd > 0) this.fireCd--;
         const wants = inp.firePressed || (inp.fire && inp.autofire);
@@ -817,7 +847,7 @@ export class Game {
         if (++this.playerT >= C.READY_FRAMES) {
           this.playerPhase = 'alive';
           this.px = C.SCREEN_W / 2;
-          this.py = C.PLAYER_Y;
+          this.py = this.playerY0;
           this.input.drag = 0;
           this.input.dragY = 0;
         }
@@ -904,7 +934,7 @@ export class Game {
     for (const b of this.eBullets) {
       if (!b.active) continue;
       b.x += b.vx; b.y += b.vy;
-      if (b.y > C.SCREEN_H) b.active = false;
+      if (b.y > this.H) b.active = false;
     }
   }
 

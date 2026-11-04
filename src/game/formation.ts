@@ -38,6 +38,8 @@ export class Formation {
   readonly sy = new Float32Array(SLOT_COUNT);
   phase = 0;
   breathing = false;
+  /** Riga più alta della griglia (spostata in basso dall'area sicura del telefono). */
+  top = FORM_TOP;
   /** 0→1 transizione morbida da sway a respiro. */
   private blend = 0;
   private swayOffset = 0;
@@ -74,7 +76,7 @@ export class Formation {
       for (let c = 0; c < FORM_COLS; c++) {
         const i = r * FORM_COLS + c;
         this.sx[i] = FORM_CX + ox + (c - (FORM_COLS - 1) / 2) * FORM_DX * spread;
-        this.sy[i] = FORM_TOP + r * FORM_DY * spread;
+        this.sy[i] = this.top + r * FORM_DY * spread;
       }
     }
   }

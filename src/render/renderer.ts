@@ -8,7 +8,7 @@ import { Game, ES, CapState } from '../game/game';
 import { Kind, stageBadges, hitRatio } from '../game/scoring';
 import { Atlas, Spr, ROT_STEPS, CELL, FONT_COLORS, FontColor } from './atlas';
 
-const STAR_COUNT = 72;
+const STAR_COUNT = 120; // abbastanza per il campo più alto (MAX_FIELD_H)
 const STAR_COLORS = ['W', 'C', 'Y', 'R', 'M', 'L', 'B', 'V', 'O', 'T'];
 
 export class Renderer {
@@ -20,6 +20,8 @@ export class Renderer {
   private readonly badgeBuf: number[] = [];
   private readonly colorRow: Record<string, number> = {};
   paused = false;
+  /** Spostamento verticale dei messaggi centrali (campo più alto di 288). */
+  private oy = 0;
   startLabel: 'TAP' | 'PUSH' = 'PUSH';
   /** Home su schermi senza spazio libero: la barra pulsanti copre la fascia bassa del canvas. */
   compactHome = false;
@@ -30,7 +32,7 @@ export class Renderer {
     const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
     for (let i = 0; i < STAR_COUNT; i++) {
       this.starX[i] = Math.floor(rnd() * C.SCREEN_W);
-      this.starY[i] = rnd() * C.SCREEN_H;
+      this.starY[i] = rnd() * C.MAX_FIELD_H;
       this.starL[i] = i % 3;
       this.starC.push(C.PALETTE[STAR_COLORS[Math.floor(rnd() * STAR_COLORS.length)]]);
       this.starP[i] = Math.floor(rnd() * 255);
@@ -41,12 +43,16 @@ export class Renderer {
   render(g: Game) {
     const ctx = this.ctx;
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, C.SCREEN_W, C.SCREEN_H);
+    ctx.fillRect(0, 0, C.SCREEN_W, g.H);
+    // messaggi al centro della zona sicura
+    this.oy = (g.insetTop + (g.H - g.insetTop - g.insetBottom - C.SCREEN_H) / 2) | 0;
     this.stars(g);
 
     if (g.mode === 'title') {
+      ctx.setTransform(1, 0, 0, 1, 0, g.insetTop); // home sotto il notch
       this.title(g);
       this.hud(g, false);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       return;
     }
     this.beams(g);
@@ -56,7 +62,9 @@ export class Renderer {
     this.bullets(g);
     this.effects(g);
     this.hud(g, true);
+    ctx.setTransform(1, 0, 0, 1, 0, this.oy); // messaggi centrati nel campo
     this.messages(g);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (g.mode === 'demo') {
       this.textC('DEMO PLAY', 128, 'C');
       if ((g.frame >> 5) & 1) this.textC(this.startLabel === 'TAP' ? 'TAP TO START' : 'PUSH START', 140, 'Y');
@@ -69,7 +77,7 @@ export class Renderer {
     const speeds = [0.35, 0.7, 1.3];
     for (let i = 0; i < STAR_COUNT; i++) {
       this.starY[i] += speeds[this.starL[i]] * g.starSpeed;
-      if (this.starY[i] >= C.SCREEN_H) { this.starY[i] -= C.SCREEN_H; }
+      while (this.starY[i] >= g.H) this.starY[i] -= g.H;
       // scintillio: ogni stella si accende/spegne con il proprio periodo
       if (((g.frame + this.starP[i]) >> (4 + this.starL[i])) % 3 === 0) continue;
       ctx.fillStyle = this.starC[i];
@@ -107,7 +115,7 @@ export class Renderer {
     const cols = ['C', 'B', 'W', 'P', 'C', 'V'];
     for (const e of g.enemies) {
       if (!e.active || e.state !== ES.Beam || e.beamW <= 0) continue;
-      const top = e.y + 9, bottom = C.PLAYER_Y + 9;
+      const top = e.y + 9, bottom = g.playerY0 + 9;
       const h = bottom - top;
       for (let d = 0; d < h; d += 2) {
         const hw = e.beamW * (0.25 + 0.75 * (d / h));
@@ -164,15 +172,25 @@ export class Renderer {
 
   // ── HUD ──
   private hud(g: Game, inGame: boolean) {
+    if (inGame) this.ctx.setTransform(1, 0, 0, 1, 0, g.insetTop);
+    this.hudTop(g, inGame);
+    if (inGame) this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (!inGame) return;
+    this.hudBottom(g);
+  }
+
+  private hudTop(g: Game, inGame: boolean) {
     const blink = !inGame || g.phase !== 'play' || ((g.frame >> 5) & 1) === 0;
     if (blink) this.text('1UP', 24, 0, 'R');
     this.number(g.score, 64, 8, 'W', 2);
     this.text('HIGH SCORE', 80, 0, 'R');
     this.number(g.hiScore, 144, 8, 'W', 2);
-    if (!inGame) return;
+  }
+
+  private hudBottom(g: Game) {
     // vite di riserva (in basso a sinistra)
     const reserve = Math.min(g.lives - (g.playerPhase === 'alive' || g.playerPhase === 'docking' ? 1 : 0), 6);
-    for (let i = 0; i < reserve; i++) this.sprite(Spr.Ship, 9 + i * 16, C.HUD_BOTTOM_Y + 8, -Math.PI / 2);
+    for (let i = 0; i < reserve; i++) this.sprite(Spr.Ship, 9 + i * 16, g.H - g.insetBottom - 16 + 8, -Math.PI / 2);
     // badge degli stage (in basso a destra)
     const badges = stageBadges(g.stage, this.badgeBuf);
     let x = C.SCREEN_W;
@@ -180,7 +198,7 @@ export class Renderer {
       const img = this.atlas.badges.get(badges[i])!;
       x -= img.width;
       if (x < 120) break;
-      this.ctx.drawImage(img, x, C.HUD_BOTTOM_Y);
+      this.ctx.drawImage(img, x, g.H - g.insetBottom - 16);
     }
   }
 
@@ -265,10 +283,10 @@ export class Renderer {
   /** Schermata di fine partita con nuovo record. */
   private record(g: Game) {
     const ctx = this.ctx;
-    ctx.setTransform(2, 0, 0, 2, 0, 0); // testo ×2, nessuna allocazione
+    ctx.setTransform(2, 0, 0, 2, 0, this.oy); // testo ×2, nessuna allocazione
     if ((g.frame >> 4) & 1) this.text('NUOVO RECORD!', 4, 52, 'M');
     else this.text('NUOVO RECORD!', 4, 52, 'Y');
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, this.oy);
     this.textC('COMPLIMENTI !', 140, 'C');
     this.textC('HAI SUPERATO IL RECORD', 164, 'W');
     if (g.recordToBeat > 0) {
@@ -277,9 +295,9 @@ export class Renderer {
     }
     this.textC('IL TUO PUNTEGGIO', 204, 'Y');
     const d = this.digits(g.score);
-    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    ctx.setTransform(2, 0, 0, 2, 0, this.oy);
     this.number(g.score, (C.SCREEN_W + d * 16) / 4, 110, 'W', 1);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, this.oy);
   }
 
   private valueRow(y: number, spr: Spr, a: number, b: number, extra: boolean) {

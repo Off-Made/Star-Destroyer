@@ -163,6 +163,51 @@ describe('controllo col dito (movimento libero)', () => {
   });
 });
 
+describe('campo allungato per riempire lo schermo del telefono', () => {
+  it('la parte bassa (nave, raggio, uscita nemici) si aggancia al fondo', () => {
+    const g = newGame();
+    g.setFieldHeight(480);
+    expect(g.H).toBe(480);
+    expect(g.playerY0).toBe(C.PLAYER_Y + 192);
+    expect(g.beamStopY).toBe(C.BEAM_STOP_Y + 192);
+    expect(g.exitY).toBe(492);
+    // la nave mantiene la distanza dal fondo
+    expect(g.py).toBe(C.PLAYER_Y + 192);
+    g.setFieldHeight(10000);
+    expect(g.H).toBe(C.MAX_FIELD_H);
+  });
+
+  it('rispetta le fasce di notch e barra Home', () => {
+    const g = newGame();
+    g.setFieldHeight(500, 30, 18);
+    expect(g.formation.top).toBe(C.FORM_TOP + 30);
+    expect(g.minY).toBe(C.PLAYER_MIN_Y + 30);
+    expect(g.playerY0).toBe(C.PLAYER_Y + (500 - 18 - 288));
+    for (let i = 0; i < 80; i++) { (g as any).setPhase('intro'); g.input.dragY = -50; g.step(); }
+    expect(g.py).toBe(g.minY);
+  });
+
+  it('una partita su campo alto avanza di stage senza errori', () => {
+    const g = new Game(undefined, new Rng(13), memoryStorage());
+    g.setFieldHeight(470);
+    g.startGame('game');
+    g.skipToPlay();
+    let maxStage = 1;
+    for (let k = 0; k < 60 * 60 * 5; k++) {
+      g.input.fire = true; g.input.autofire = true;
+      let tx = 112, best = -1;
+      for (const e of g.enemies) if (e.active && e.y > best) { best = e.y; tx = e.x; }
+      g.input.absX = tx;
+      g.step();
+      if (g.lives < 2) g.lives = 3;
+      for (const b of g.eBullets) if (b.active) expect(b.y).toBeLessThanOrEqual(g.H + 8);
+      expect(Number.isFinite(g.py)).toBe(true);
+      maxStage = Math.max(maxStage, g.stage);
+    }
+    expect(maxStage).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe('nemici e punteggio in gioco', () => {
   it('comandante: due colpi, il primo cambia stato senza punti', () => {
     const g = newGame();

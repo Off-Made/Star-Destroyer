@@ -103,7 +103,7 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Record a 0 al primo avvio + messaggio "NUOVO RECORD!" | ✅ | test |
 | High score in localStorage | ✅ | test |
 | Esplosione e respawn dopo READY | ✅ | |
-| Canvas 224×288, scala intera, `pixelated`, barre nere | ✅ | e2e |
+| Canvas a schermo pieno sui telefoni: larghezza logica 224, altezza allungata (fino a 560) sulle proporzioni dello schermo, anche sotto notch/barra Home; HUD, formazione e nave nella zona sicura. Tablet/PC: 224×288 a scala intera | ✅ | e2e "nessuna fascia nera" + "notch"; scelta del committente |
 | CRT opzionale (disattivo di default) | ✅ | |
 | Audio sintetizzato: sparo, esplosioni per tipo, morte, raggio, cattura, liberazione, vita extra, bonus, perfect, game over, high score, avvio | ✅ | jingle originali |
 | AudioContext sbloccato al tocco, ripresa dal background, interruttore silenzioso iOS, mute | ✅ | da provare su un iPhone reale |
@@ -118,6 +118,6 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Audio sbloccato dal pulsante START + suggerimento una tantum "Aggiungi a Home" | ✅ | |
 | Tastiera (frecce/A-D, spazio, P, M, Invio) e gamepad | ✅ | |
 | Dev server su 0.0.0.0 + URL LAN + QR | ✅ | `npm run dev` |
-| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 32 + 21 test verdi |
+| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 35 + 23 test verdi |
 | Confronto visivo con `immagini/` | ❌ (voluto) | aspetto originale per scelta; vedi §0 |
 | Aspetto e musiche identici all'originale | ❌ (voluto) | non realizzabile per diritto d'autore |

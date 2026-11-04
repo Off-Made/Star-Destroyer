@@ -120,6 +120,9 @@ function relayout(force = false) {
   if (!force && key === lastLayoutKey) return;
   lastLayoutKey = key;
   const r = layout(els, touchUI);
+  // il canvas prende l'altezza logica del campo (più alta sui telefoni → schermo pieno)
+  if (canvas.height !== r.fieldH) { canvas.height = r.fieldH; ctx.imageSmoothingEnabled = false; }
+  game.setFieldHeight(r.fieldH, r.insetTop, r.insetBottom);
   touch.cssPerPixel = r.cssW / 224;
   touch.canvasRect = { left: r.left, top: r.top };
   renderer.compactHome = els.app.classList.contains('compact-home');
@@ -254,6 +257,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureConte
 (window as any).__sd = {
   game, loop: loopObj, settings, audio, touch,
   isPaused: () => paused,
+  relayout: () => relayout(true),
   /** Benchmark: n tick + render eseguiti di fila, ritorna i ms medi per frame. */
   bench(n = 600) {
     const t0 = performance.now();
