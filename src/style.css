@@ -64,33 +64,12 @@ body { position: fixed; inset: 0; height: 100dvh; }
 .rbtn.icon .px { height: 100%; }
 .rbtn.icon:active { filter: brightness(1.5); background: transparent; }
 
-.zone, #bar { position: absolute; display: none; }
-#app.touch .zone { display: flex; }
-#bar { display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+#bar { position: absolute; display: flex; gap: 10px; justify-content: space-between; align-items: center; }
 #bar .rbtn { flex: 1; }
 #app:not(.home) #bar { display: none; }
 #app:not(.home) #bPause { display: flex; }
-
-.zone { align-items: center; justify-content: center; touch-action: none; }
-/* zona di trascinamento: schermo "a griglia" stile terminale, senza frecce */
-#pad {
-  background:
-    repeating-linear-gradient(0deg, rgba(47,91,255,.10) 0 1px, transparent 1px 6px),
-    repeating-linear-gradient(90deg, rgba(47,91,255,.10) 0 1px, transparent 1px 6px),
-    #000;
-  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--navy), 0 var(--px) 0 0 var(--navy),
-              calc(-1 * var(--px)) 0 0 0 var(--navy), var(--px) 0 0 0 var(--navy);
-  margin: var(--px);
-}
-#pad .px { height: 16px; opacity: .55; }
-#pad.active { box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--cyan), 0 var(--px) 0 0 var(--cyan),
-                          calc(-1 * var(--px)) 0 0 0 var(--cyan), var(--px) 0 0 0 var(--cyan); }
-#pad.active .px { opacity: 1; }
-/* FIRE: pulsante in pixel art (due canvas, normale e premuto) */
-#fire { background: transparent; }
-#fire .px { width: 100%; height: 100%; }
-#fire .px.down, #fire.active .px.up { display: none; }
-#fire.active .px.down { display: block; }
+/* in partita tutto lo schermo è superficie di tocco: niente scroll né gesti del browser */
+#app:not(.home) { cursor: crosshair; }
 
 /* ── overlay ── */
 .overlay {
@@ -109,7 +88,6 @@ body { position: fixed; inset: 0; height: 100dvh; }
 }
 #homeStart:focus-visible { outline: 2px dashed #ffe63a; outline-offset: 2px; }
 #app.home #homeStart { display: block; }
-#app.home .zone { display: none !important; }
 #app.home #bPause { display: none !important; }
 .retro-box, .retro-panel {
   background: #000;
@@ -122,6 +100,7 @@ body { position: fixed; inset: 0; height: 100dvh; }
   padding: 10px 14px; overflow: hidden;
 }
 #app.home.touch.portrait #homeHelp { display: flex; }
+#homeHelp.no-space { display: none !important; }
 #homeHelp .px { height: 14px; }
 #homeHelp .hh-title .px { height: 18px; }
 #homeHelp.compact { gap: 6px; padding: 6px 10px; }

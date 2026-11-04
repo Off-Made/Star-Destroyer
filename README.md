@@ -26,13 +26,14 @@ npm run icons      # rigenera le icone PWA
 ## Comandi
 | | Touch | Tastiera | Gamepad |
 |---|---|---|---|
-| Muovi | **solo** trascinando il dito nel riquadro TRASCINA QUI | ← → / A D | stick / d-pad |
-| Spara | FIRE (tenendo premuto = auto-fire) | Spazio / Z / X | A / B |
+| Muovi | tocca **ovunque** e trascina: la nave segue il dito in tutte le direzioni | frecce / WASD | stick / d-pad |
+| Spara | automatico finché il dito è appoggiato | Spazio / Z / X (tenuto = raffica) | A / B |
 | Start (solo dalla home) | pulsante START | Invio | Start |
 | Pausa | tastino II in alto a destra → menu HOME / MUSICA ON-OFF / RIPRENDI | P / Esc | Select |
 | Musica | MUSICA ON/OFF (home e menu di pausa) | M | |
 
-In OPZIONI (dalla home) trovi: trascinamento relativo o assoluto, sensibilità, auto-fire, effetti sonori, vibrazione ed effetto CRT.
+In OPZIONI (dalla home) trovi: modo di trascinamento ("la nave si sposta come il dito" oppure "la nave va sotto il dito"), sensibilità, effetti sonori, vibrazione ed effetto CRT.
+Da PC si può giocare anche col mouse: tieni premuto e trascina.
 
 ## Installare come app (PWA)
 - **iPhone/iPad (Safari):** Condividi → *Aggiungi alla schermata Home*. Si apre a schermo intero e funziona offline.

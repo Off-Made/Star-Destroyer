@@ -35,7 +35,9 @@ export class Keyboard {
     const d = this.down;
     if (d.has('ArrowLeft') || d.has('KeyA')) inp.left = true;
     if (d.has('ArrowRight') || d.has('KeyD')) inp.right = true;
-    const fire = d.has('Space') || d.has('KeyZ') || d.has('KeyX') || d.has('ArrowUp');
+    if (d.has('ArrowUp') || d.has('KeyW')) inp.up = true;
+    if (d.has('ArrowDown') || d.has('KeyS')) inp.down = true;
+    const fire = d.has('Space') || d.has('KeyZ') || d.has('KeyX');
     if (fire) inp.fire = true;
     if (fire && !this.prevFire) inp.firePressed = true;
     this.prevFire = fire;
@@ -57,6 +59,9 @@ export class Gamepads {
       const ax = p.axes[0] ?? 0;
       if (ax < -0.35 || p.buttons[14]?.pressed) inp.left = true;
       if (ax > 0.35 || p.buttons[15]?.pressed) inp.right = true;
+      const ay = p.axes[1] ?? 0;
+      if (ay < -0.35 || p.buttons[12]?.pressed) inp.up = true;
+      if (ay > 0.35 || p.buttons[13]?.pressed) inp.down = true;
       if (p.buttons[0]?.pressed || p.buttons[1]?.pressed || p.buttons[2]?.pressed) fire = true;
       if (p.buttons[9]?.pressed) start = true;
       if (p.buttons[8]?.pressed) pause = true;

@@ -17,7 +17,11 @@ export const MAX_CATCHUP_TICKS = 5;
 // ── Layout HUD ─────────────────────────────────────────────────────────────
 export const HUD_TOP_H = 16;
 export const HUD_BOTTOM_Y = 272;
+/** Riga di partenza della nave (e base del raggio traente). */
 export const PLAYER_Y = 256;
+/** Movimento libero: la nave può salire fino a qui (sotto l'HUD) e scendere fino a PLAYER_MAX_Y. */
+export const PLAYER_MIN_Y = 36;
+export const PLAYER_MAX_Y = 262;
 export const PLAYER_MIN_X = 8;
 export const PLAYER_MAX_X = SCREEN_W - 8;
 
@@ -32,8 +36,10 @@ export const FIRE_COOLDOWN = 6; // frame minimi fra due spari
 export const PLAYER_EXPLODE_FRAMES = 96;
 export const RESPAWN_MIN_WAIT = 120;
 export const READY_FRAMES = 100;
-/** Accumulo massimo del drag relativo (px logici) per evitare "ritardi" del movimento. */
-export const DRAG_MAX_PENDING = 48;
+/** Spostamento massimo per frame quando la nave segue il dito (anti-teletrasporto, ~720 px/s). */
+export const DRAG_MAX_STEP = 12;
+/** Modalità "sotto il dito": la nave sta un po' sopra il polpastrello per restare visibile. */
+export const FINGER_OFFSET_Y = -14;
 
 // ── Vite extra ─────────────────────────────────────────────────────────────
 export const EXTRA_LIFE_FIRST = 20000;

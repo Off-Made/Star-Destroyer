@@ -35,6 +35,7 @@ Questo materiale appartiene a terzi ed è protetto. Per questo, d'accordo con il
 | # | Regola | Valore/condizione | Verifica |
 |---|---|---|---|
 | R1 | Risoluzione logica | 224×288 portrait, 60 tick/s fissi | `config.ts`, `core/loop.ts` |
+| R1b | Movimento (scelta del committente, diverso dall'arcade) | la nave si muove **liberamente in 2D** (x 8–216, y 36–262) seguendo il dito 1:1 (max 12 px/frame); fuoco automatico finché il dito è appoggiato; contatto con qualsiasi nemico, anche in formazione, = collisione | test "controllo col dito" |
 | R2 | Vite iniziali | 3 | `game.test.ts` "parte con 3 vite" |
 | R3 | Vite extra | 20.000, 70.000, poi +70.000 (140k, 210k…), con suono | `scoring.test.ts`, `game.test.ts` |
 | R4 | Colpi a schermo | max 2 (singola), 4 (doppia) | `game.test.ts` "massimo 2 colpi…" |
@@ -83,7 +84,7 @@ vite.config.ts         plugin che genera il service worker con il precache della
 
 | Requisito | Stato | Note |
 |---|---|---|
-| Schermata fissa verticale, nave solo orizzontale | ✅ | |
+| Schermata fissa verticale | ✅ | la nave si muove in tutto il campo su richiesta del committente (R1b) |
 | 3 vite, extra a 20k/70k/+70k con suono | ✅ | test |
 | 2 colpi a schermo (4 in doppia) | ✅ | test |
 | 40 nemici, 5 gruppi da 8, ingressi curvi con varianti | ✅ | test |
@@ -107,7 +108,7 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Audio sintetizzato: sparo, esplosioni per tipo, morte, raggio, cattura, liberazione, vita extra, bonus, perfect, game over, high score, avvio | ✅ | jingle originali |
 | AudioContext sbloccato al tocco, ripresa dal background, interruttore silenzioso iOS, mute | ✅ | da provare su un iPhone reale |
 | Viewport cover, dvh, safe-area, niente scroll/zoom/selezione/menu | ✅ | e2e |
-| Da telefono movimento SOLO col trascinamento (relativo/assoluto, sensibilità), FIRE in pixel art con autofire, multitouch; nessun pulsante direzionale | ✅ | e2e verifica l'assenza di frecce |
+| Da telefono nessun controller: tocca ovunque e trascina, la nave segue il dito e spara da sola | ✅ | e2e simula il dito e verifica l'assenza di pulsanti |
 | In partita solo il tastino pausa → menu retrò HOME / MUSICA ON-OFF / RIPRENDI; opzioni dalla home | ✅ | e2e "menu di pausa" |
 | Interfaccia in stile retrò (pixel font del gioco, cornici a gradini) | ✅ | `ui/pixel.ts` |
 | Vibrazione (Android) | ✅ | |
@@ -117,6 +118,6 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Audio sbloccato dal pulsante START + suggerimento una tantum "Aggiungi a Home" | ✅ | |
 | Tastiera (frecce/A-D, spazio, P, M, Invio) e gamepad | ✅ | |
 | Dev server su 0.0.0.0 + URL LAN + QR | ✅ | `npm run dev` |
-| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 27 + 21 test verdi |
+| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 32 + 21 test verdi |
 | Confronto visivo con `immagini/` | ❌ (voluto) | aspetto originale per scelta; vedi §0 |
 | Aspetto e musiche identici all'originale | ❌ (voluto) | non realizzabile per diritto d'autore |

@@ -21,6 +21,8 @@ export class Renderer {
   private readonly colorRow: Record<string, number> = {};
   paused = false;
   startLabel: 'TAP' | 'PUSH' = 'PUSH';
+  /** Home su schermi senza spazio libero: la barra pulsanti copre la fascia bassa del canvas. */
+  compactHome = false;
 
   constructor(private ctx: CanvasRenderingContext2D, private atlas: Atlas) {
     ctx.imageSmoothingEnabled = false;
@@ -127,8 +129,8 @@ export class Renderer {
   private player(g: Game) {
     const p = g.playerPhase;
     if (p !== 'alive' && p !== 'docking' && !(p === 'ready' && g.playerT > 30)) return;
-    this.sprite(Spr.Ship, g.px, C.PLAYER_Y, -Math.PI / 2);
-    if (g.dual) this.sprite(Spr.Ship, g.px + C.DUAL_OFFSET, C.PLAYER_Y, -Math.PI / 2);
+    this.sprite(Spr.Ship, g.px, g.py, -Math.PI / 2);
+    if (g.dual) this.sprite(Spr.Ship, g.px + C.DUAL_OFFSET, g.py, -Math.PI / 2);
   }
 
   private bullets(g: Game) {
@@ -255,6 +257,7 @@ export class Renderer {
     // START nello stile del logo; l'area cliccabile è un <button> trasparente sopra (fascia y 220-246)
     const word = (g.frame >> 5) & 1 ? this.atlas.startLit : this.atlas.start;
     ctx.drawImage(word, Math.floor((C.SCREEN_W - word.width) / 2), 220);
+    if (this.compactHome) return;
     if (this.startLabel === 'PUSH' && (g.frame >> 5) & 1) this.textC('O PREMI INVIO', 254, 'Y');
     this.textC('ORIGINAL ARCADE TRIBUTE', 274, 'D');
   }

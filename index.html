@@ -30,16 +30,15 @@
     <!-- In partita: solo il tastino pausa, nell'angolo dell'HUD -->
     <button id="bPause" class="rbtn icon" aria-label="Pausa"></button>
 
-    <!-- Controlli touch: movimento SOLO trascinando, FIRE per sparare -->
-    <div id="pad" class="zone"><span id="padLabel"></span></div>
-    <div id="fire" class="zone" aria-label="Fuoco"></div>
+    <!-- Nessun controller: si tocca lo schermo e la nave segue il dito, sparando da sola -->
 
     <!-- Home: la partita parte SOLO da START (o Invio / Start del gamepad) -->
     <button id="homeStart" aria-label="Inizia la partita">START</button>
     <div id="homeHelp" class="retro-box">
       <div class="hh-title" data-px="COME SI GIOCA" data-col="Y"></div>
-      <div class="hh-row" data-px="TRASCINA PER MUOVERTI" data-col="C"></div>
-      <div class="hh-row" data-px="TIENI PREMUTO FIRE" data-col="R"></div>
+      <div class="hh-row" data-px="TOCCA E TRASCINA" data-col="C"></div>
+      <div class="hh-row" data-px="LA NAVE SEGUE IL DITO" data-col="C"></div>
+      <div class="hh-row" data-px="E SPARA DA SOLA" data-col="R"></div>
       <div class="hh-row" data-px="BATTI IL TUO RECORD" data-col="M"></div>
     </div>
 
@@ -57,12 +56,11 @@
       <div class="retro-panel">
         <div class="menu-title" data-px="OPZIONI" data-col="Y"></div>
         <label>Trascinamento
-          <select id="sDragMode"><option value="relative">Relativo (sposta di quanto muovi il dito)</option><option value="absolute">Assoluto (la nave segue il dito)</option></select>
+          <select id="sDragMode"><option value="relative">La nave si sposta come il dito (consigliato)</option><option value="absolute">La nave va sotto il dito</option></select>
         </label>
         <label>Sensibilità <span id="sSensV"></span>
-          <input id="sSens" type="range" min="0.5" max="3" step="0.1" />
+          <input id="sSens" type="range" min="0.5" max="2.5" step="0.1" />
         </label>
-        <label class="row"><input id="sAuto" type="checkbox" /> Auto-fire tenendo premuto</label>
         <label class="row"><input id="sSfx" type="checkbox" /> Effetti sonori</label>
         <label class="row"><input id="sVibe" type="checkbox" /> Vibrazione (Android)</label>
         <label class="row"><input id="sCrt" type="checkbox" /> Effetto CRT / scanline</label>

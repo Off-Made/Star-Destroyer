@@ -14,7 +14,7 @@ import { Keyboard, Gamepads, HostActions } from './input/keys';
 import { TouchControls } from './input/touch';
 import { loadSettings, saveSettings, Settings } from './ui/settings';
 import { setupInstallHint } from './ui/install';
-import { setPixelLabel, pauseIcon, fireButton } from './ui/pixel';
+import { setPixelLabel, pauseIcon } from './ui/pixel';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -35,22 +35,16 @@ const ctx = canvas.getContext('2d', { alpha: false })!;
 const renderer = new Renderer(ctx, buildAtlas());
 
 const els: LayoutEls = {
-  app: $('app'), canvas, crt: $('crt'), pad: $('pad'), fire: $('fire'),
+  app: $('app'), canvas, crt: $('crt'),
   bar: $('bar'), pause: $('bPause'), probe: $('probe'), homeStart: $('homeStart'), homeHelp: $('homeHelp'),
 };
 
 // ── Grafica retrò dei controlli (generata una volta dai glifi del gioco) ──
 for (const el of document.querySelectorAll<HTMLElement>('[data-px]')) setPixelLabel(el, el.dataset.px!, el.dataset.col ?? 'Y');
-setPixelLabel($('padLabel'), 'TRASCINA QUI', 'C');
 setPixelLabel($('bSettings'), 'OPZIONI', 'C');
 setPixelLabel($('mHome'), 'HOME', 'M');
 setPixelLabel($('mResume'), 'RIPRENDI', 'Y');
 $('bPause').replaceChildren(pauseIcon());
-{
-  const up = fireButton(false), down = fireButton(true);
-  up.classList.add('up'); down.classList.add('down');
-  els.fire.replaceChildren(up, down);
-}
 
 const isTouch = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 let touchUI = isTouch();
@@ -63,7 +57,8 @@ const keyboardActions: HostActions = {
 };
 const keyboard = new Keyboard(keyboardActions);
 const pads = new Gamepads(keyboardActions);
-const touch = new TouchControls(els.pad, els.fire, settings, () => {});
+// tutto lo schermo è superficie di tocco: la nave segue il dito e spara da sola
+const touch = new TouchControls(els.app, settings);
 touch.onAnyTouch = () => audio.resume();
 
 // ── Pausa e menu di pausa ──
@@ -74,13 +69,14 @@ function setPaused(p: boolean) {
   renderer.paused = paused;
   pauseMenu.classList.toggle('hidden', !paused);
   if (paused) { audio.beam(false); touch.reset(); }
+  syncTouch();
 }
 
 /** Avvia la partita: SOLO dalla home (START). In partita riprende dalla pausa. */
 function startGame() {
   audio.unlock(); // dentro il gesto dell'utente: sblocca l'audio (iOS)
   if (game.mode !== 'game') {
-    touch.clearDrag();
+    touch.reset();
     game.startGame('game');
     setPaused(false);
     syncHome(); // mostra subito i controlli di gioco
@@ -110,15 +106,23 @@ function syncButtons() {
   els.app.classList.toggle('crt', settings.crt);
 }
 
+/** Il dito controlla la nave solo durante la partita e fuori dalla pausa. */
+function syncTouch() {
+  const on = game.mode === 'game' && !paused;
+  if (!on && touch.enabled) touch.reset();
+  touch.enabled = on;
+}
+
 // ── Layout ──
 let lastLayoutKey = '';
 function relayout(force = false) {
-  const home = game.mode === 'title';
-  const key = `${innerWidth}x${innerHeight}@${devicePixelRatio}:${touchUI}:${home}`;
+  const key = `${innerWidth}x${innerHeight}@${devicePixelRatio}:${touchUI}`;
   if (!force && key === lastLayoutKey) return;
   lastLayoutKey = key;
-  const r = layout(els, touchUI, home);
+  const r = layout(els, touchUI);
   touch.cssPerPixel = r.cssW / 224;
+  touch.canvasRect = { left: r.left, top: r.top };
+  renderer.compactHome = els.app.classList.contains('compact-home');
   $('rotate').classList.toggle('hidden', !(touchUI && !r.portrait && r.cssH < 300));
 }
 addEventListener('resize', () => relayout());
@@ -140,20 +144,18 @@ tapBtn('mResume', () => setPaused(false));
 // ── Opzioni (dalla home) ──
 const sDrag = $<HTMLSelectElement>('sDragMode');
 const sSens = $<HTMLInputElement>('sSens');
-const sAuto = $<HTMLInputElement>('sAuto');
 const sSfx = $<HTMLInputElement>('sSfx');
 const sVibe = $<HTMLInputElement>('sVibe');
 const sCrt = $<HTMLInputElement>('sCrt');
 function openSettings() {
   sDrag.value = settings.dragMode;
   sSens.value = String(settings.sensitivity); $('sSensV').textContent = settings.sensitivity.toFixed(1);
-  sAuto.checked = settings.autofire; sSfx.checked = settings.sfx; sVibe.checked = settings.vibrate; sCrt.checked = settings.crt;
+  sSfx.checked = settings.sfx; sVibe.checked = settings.vibrate; sCrt.checked = settings.crt;
   $('settings').classList.remove('hidden');
 }
 const readSettings = () => {
   settings.dragMode = sDrag.value as Settings['dragMode'];
   settings.sensitivity = Number(sSens.value);
-  settings.autofire = sAuto.checked;
   settings.sfx = sSfx.checked;
   settings.vibrate = sVibe.checked;
   settings.crt = sCrt.checked;
@@ -163,7 +165,7 @@ const readSettings = () => {
   saveSettings(localStore, settings);
   syncButtons();
 };
-for (const el of [sDrag, sSens, sAuto, sSfx, sVibe, sCrt]) el.addEventListener('input', readSettings);
+for (const el of [sDrag, sSens, sSfx, sVibe, sCrt]) el.addEventListener('input', readSettings);
 tapBtn('sClose', () => $('settings').classList.add('hidden'));
 syncButtons();
 
@@ -176,6 +178,7 @@ function syncHome() {
   homeShown = home;
   els.app.classList.toggle('home', home);
   if (home) setPaused(false);
+  syncTouch();
   relayout(true);
 }
 syncHome();
@@ -220,19 +223,19 @@ function tick() {
   relayout();
   const inp = game.input;
   // l'input viene ricostruito a ogni tick (OR di tutti i dispositivi)
-  inp.left = inp.right = inp.fire = false;
-  inp.absX = NaN;
-  inp.autofire = settings.autofire;
+  inp.left = inp.right = inp.up = inp.down = inp.fire = false;
+  inp.absX = inp.absY = NaN;
+  inp.autofire = true;
   if (game.mode === 'demo') {
     demoInput(game);
-    inp.drag = 0;
+    inp.drag = inp.dragY = 0;
     inp.firePressed = false;
   } else {
     keyboard.apply(inp); // frecce / A-D: solo tastiera da PC
     pads.apply(inp);
-    touch.apply(inp);    // da telefono: solo trascinamento + FIRE
+    touch.apply(inp);    // da telefono: la nave segue il dito e spara da sola
   }
-  if (paused) { inp.drag = 0; inp.firePressed = false; return; }
+  if (paused) { inp.drag = inp.dragY = 0; inp.firePressed = false; return; }
   if (game.mode === 'title' && ATTRACT_DEMO) {
     if (++titleT > T.title) { titleT = 0; game.startGame('demo'); }
   } else titleT = 0;
@@ -249,7 +252,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureConte
 
 // ganci di diagnostica per i test end-to-end
 (window as any).__sd = {
-  game, loop: loopObj, settings, audio,
+  game, loop: loopObj, settings, audio, touch,
   isPaused: () => paused,
   /** Benchmark: n tick + render eseguiti di fila, ritorna i ms medi per frame. */
   bench(n = 600) {

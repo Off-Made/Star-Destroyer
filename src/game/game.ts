@@ -37,15 +37,19 @@ export interface Input {
   right: boolean;
   fire: boolean; // tenuto premuto
   firePressed: boolean; // fronte di salita (consumato dal gioco)
-  /** Spostamento relativo richiesto dal drag, in px logici (consumato dal gioco). */
+  up: boolean;
+  down: boolean;
+  /** Spostamento relativo richiesto dal dito, in px logici (consumato dal gioco). */
   drag: number;
-  /** Posizione X assoluta richiesta (drag assoluto), NaN se assente. */
+  dragY: number;
+  /** Posizione assoluta richiesta (modalità "sotto il dito"), NaN se assente. */
   absX: number;
+  absY: number;
   autofire: boolean;
 }
 
 export function makeInput(): Input {
-  return { left: false, right: false, fire: false, firePressed: false, drag: 0, absX: NaN, autofire: true };
+  return { left: false, right: false, up: false, down: false, fire: false, firePressed: false, drag: 0, dragY: 0, absX: NaN, absY: NaN, autofire: true };
 }
 
 export enum ES { Off, Path, Home, Form, Peel, Seek, Loop, Escort, BeamDive, Beam, Exit, Wait }
@@ -120,7 +124,8 @@ export class Game {
   playerT = 0;
   px = C.SCREEN_W / 2;
   dual = false;
-  private pendingDrag = 0;
+  /** Posizione verticale della nave: si muove liberamente in tutto il campo. */
+  py = C.PLAYER_Y;
   private fireCd = 0;
   /** Posizione delle esplosioni del giocatore (per la nave doppia). */
 
@@ -184,6 +189,7 @@ export class Game {
     this.hits = 0;
     this.stage = 1;
     this.dual = false;
+    this.py = C.PLAYER_Y;
     this.capState = CapState.None;
     this.capHolder = -1;
     this.clearAll();
@@ -480,7 +486,7 @@ export class Game {
 
   private seek(e: Enemy, i: number) {
     const tx = this.playerPhase === 'alive' ? this.px : C.SCREEN_W / 2;
-    let target = Math.atan2(C.PLAYER_Y + 30 - e.y, tx - e.x);
+    let target = Math.atan2(Math.max(this.py, e.y + 60) + 30 - e.y, tx - e.x);
     const lo = 25 * DEG, hi = 155 * DEG;
     if (target < lo) target = lo; else if (target > hi) target = hi;
     if (e.kind === Kind.Raider) target += Math.sin(e.t * 0.07) * 0.5;
@@ -530,7 +536,7 @@ export class Game {
 
   private diveFire(e: Enemy, i: number) {
     if (e.fired >= e.maxShots) return;
-    if (e.y >= (e.fired === 0 ? e.fireY0 : e.fireY1) && e.y < C.PLAYER_Y - 50) {
+    if (e.y >= (e.fired === 0 ? e.fireY0 : e.fireY1) && e.y < this.py - 50) {
       this.fireAt(e);
       // il comandante che trattiene una nave fa sparare anche lei
       if (e.holding && this.capState === CapState.Held && this.capHolder === i) this.fireFrom(this.capX, this.capY);
@@ -549,7 +555,8 @@ export class Game {
     for (const b of this.eBullets) {
       if (b.active) continue;
       const vy = this.diff.bulletSpeed;
-      let vx = ((this.px - x) * vy) / Math.max(40, C.PLAYER_Y - y);
+      if (y > this.py - 24) return; // mai sparare a una nave che sta sopra
+      let vx = ((this.px - x) * vy) / Math.max(40, this.py - y);
       if (vx > C.ENEMY_BULLET_MAX_VX) vx = C.ENEMY_BULLET_MAX_VX;
       else if (vx < -C.ENEMY_BULLET_MAX_VX) vx = -C.ENEMY_BULLET_MAX_VX;
       b.active = true; b.x = x; b.y = y; b.vx = vx; b.vy = vy;
@@ -677,7 +684,7 @@ export class Game {
     else if (t < open + hold) {
       e.beamW = C.BEAM_MAX_HALF_W;
       if (this.playerPhase === 'alive' && !this.dual && this.capState === CapState.None &&
-          Math.abs(this.px - e.x) < C.BEAM_CAPTURE_HALF_W) this.capture(i);
+          Math.abs(this.px - e.x) < C.BEAM_CAPTURE_HALF_W && this.py > e.y + 8) this.capture(i);
     } else if (t < open + hold + close) e.beamW = (1 - (t - open - hold) / close) * C.BEAM_MAX_HALF_W;
     else {
       e.beamW = 0;
@@ -692,11 +699,10 @@ export class Game {
   capture(holder: number) {
     this.capState = CapState.Rising;
     this.capHolder = holder;
-    this.capX = this.px; this.capY = C.PLAYER_Y; this.capRot = 0;
+    this.capX = this.px; this.capY = this.py; this.capRot = 0;
     this.playerPhase = 'captured';
     this.playerT = 0;
     this.lives--;
-    this.pendingDrag = 0;
     this.sound.music('capture');
     this.sound.haptic(120);
     for (const b of this.eBullets) b.active = false;
@@ -744,7 +750,7 @@ export class Game {
         // la nave del giocatore si sposta se non c'è spazio a destra
         const maxX = C.PLAYER_MAX_X - C.DUAL_OFFSET;
         if (this.px > maxX) this.px = Math.max(maxX, this.px - C.PLAYER_SPEED);
-        const tx = this.px + C.DUAL_OFFSET, ty = C.PLAYER_Y;
+        const tx = this.px + C.DUAL_OFFSET, ty = this.py;
         const dx = tx - this.capX, dy = ty - this.capY;
         const d = Math.hypot(dx, dy);
         if (d <= C.RESCUE_SPEED) {
@@ -769,27 +775,26 @@ export class Game {
     const inp = this.input;
     switch (this.playerPhase) {
       case 'alive': {
-        let dx = 0;
+        // tastiera/gamepad: velocità arcade; dito: segue il movimento in tempo reale (1:1)
+        let dx = 0, dy = 0;
         if (inp.left) dx -= C.PLAYER_SPEED;
         if (inp.right) dx += C.PLAYER_SPEED;
-        if (inp.drag !== 0) {
-          this.pendingDrag += inp.drag;
-          if (this.pendingDrag > C.DRAG_MAX_PENDING) this.pendingDrag = C.DRAG_MAX_PENDING;
-          if (this.pendingDrag < -C.DRAG_MAX_PENDING) this.pendingDrag = -C.DRAG_MAX_PENDING;
-          inp.drag = 0;
+        if (inp.up) dy -= C.PLAYER_SPEED;
+        if (inp.down) dy += C.PLAYER_SPEED;
+        const step = C.DRAG_MAX_STEP;
+        if (inp.drag !== 0 || inp.dragY !== 0) {
+          dx += Math.max(-step, Math.min(step, inp.drag));
+          dy += Math.max(-step, Math.min(step, inp.dragY));
+          inp.drag = 0; inp.dragY = 0;
         }
-        if (dx === 0 && this.pendingDrag !== 0) {
-          dx = Math.max(-C.PLAYER_SPEED, Math.min(C.PLAYER_SPEED, this.pendingDrag));
-          this.pendingDrag -= dx;
-          if (Math.abs(this.pendingDrag) < 0.01) this.pendingDrag = 0;
-        }
-        if (dx === 0 && !Number.isNaN(inp.absX)) {
-          const d = inp.absX - this.px - (this.dual ? C.DUAL_OFFSET / 2 : 0);
-          dx = Math.max(-C.PLAYER_SPEED, Math.min(C.PLAYER_SPEED, d));
+        if (!Number.isNaN(inp.absX)) {
+          const cx = this.px + (this.dual ? C.DUAL_OFFSET / 2 : 0);
+          dx = Math.max(-step, Math.min(step, inp.absX - cx));
+          if (!Number.isNaN(inp.absY)) dy = Math.max(-step, Math.min(step, inp.absY - this.py));
         }
         const maxX = C.PLAYER_MAX_X - (this.dual ? C.DUAL_OFFSET : 0);
         this.px = Math.max(C.PLAYER_MIN_X, Math.min(maxX, this.px + dx));
-        if (this.px >= maxX || this.px <= C.PLAYER_MIN_X) this.pendingDrag = 0;
+        this.py = Math.max(C.PLAYER_MIN_Y, Math.min(C.PLAYER_MAX_Y, this.py + dy));
 
         if (this.fireCd > 0) this.fireCd--;
         const wants = inp.firePressed || (inp.fire && inp.autofire);
@@ -812,8 +817,9 @@ export class Game {
         if (++this.playerT >= C.READY_FRAMES) {
           this.playerPhase = 'alive';
           this.px = C.SCREEN_W / 2;
-          this.pendingDrag = 0;
+          this.py = C.PLAYER_Y;
           this.input.drag = 0;
+          this.input.dragY = 0;
         }
         break;
       default: break;
@@ -831,7 +837,7 @@ export class Game {
       if (b.active) continue;
       b.active = true;
       b.x = this.px + (placed === 1 ? C.DUAL_OFFSET : 0);
-      b.y = C.PLAYER_Y - 8;
+      b.y = this.py - 8;
       b.vx = 0; b.vy = -C.PLAYER_BULLET_SPEED;
       if (++placed === need) break;
     }
@@ -855,7 +861,7 @@ export class Game {
   hitPlayer(which: 0 | 1) {
     if (this.playerPhase !== 'alive') return;
     const x = which === 1 ? this.px + C.DUAL_OFFSET : this.px;
-    this.spawnFx(x, C.PLAYER_Y, true);
+    this.spawnFx(x, this.py, true);
     this.sound.sfx('playerDie');
     this.sound.haptic(250);
     if (this.dual) {
@@ -866,7 +872,6 @@ export class Game {
     this.lives--;
     this.playerPhase = 'exploding';
     this.playerT = 0;
-    this.pendingDrag = 0;
   }
 
   /** Salva subito il record (es. se l'app viene chiusa a metà partita). */
@@ -928,7 +933,7 @@ export class Game {
       if (!b.active) continue;
       for (let s = 0; s < (this.dual ? 2 : 1); s++) {
         const x = this.px + s * C.DUAL_OFFSET;
-        if (Math.abs(b.x - x) < C.PLAYER_HIT_W && Math.abs(b.y - C.PLAYER_Y) < C.PLAYER_HIT_H) {
+        if (Math.abs(b.x - x) < C.PLAYER_HIT_W && Math.abs(b.y - this.py) < C.PLAYER_HIT_H) {
           b.active = false;
           this.hitPlayer(s as 0 | 1);
           break;
@@ -939,10 +944,11 @@ export class Game {
     // contatto diretto nemico ↔ giocatore
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i];
-      if (!e.active || e.state === ES.Form || e.state === ES.Wait) continue;
+      // con il movimento libero anche i nemici in formazione sono "solidi"
+      if (!e.active || e.state === ES.Wait) continue;
       for (let s = 0; s < (this.dual ? 2 : 1); s++) {
         const x = this.px + s * C.DUAL_OFFSET;
-        if (Math.abs(e.x - x) < C.BODY_HIT && Math.abs(e.y - C.PLAYER_Y) < C.BODY_HIT) {
+        if (Math.abs(e.x - x) < C.BODY_HIT && Math.abs(e.y - this.py) < C.BODY_HIT) {
           this.killEnemy(i);
           this.hitPlayer(s as 0 | 1);
           break;

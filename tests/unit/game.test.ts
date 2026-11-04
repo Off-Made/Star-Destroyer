@@ -104,6 +104,65 @@ describe('giocatore', () => {
   });
 });
 
+describe('controllo col dito (movimento libero)', () => {
+  it('la nave segue il trascinamento 1:1 in tutte le direzioni', () => {
+    const g = newGame();
+    const x0 = g.px, y0 = g.py;
+    g.input.drag = -10; g.input.dragY = -30; g.step();
+    expect(g.px).toBeCloseTo(x0 - 10);
+    expect(g.py).toBeLessThan(y0 - 11); // limitato a DRAG_MAX_STEP per frame…
+    for (let i = 0; i < 3; i++) { g.input.dragY = -6; g.step(); }
+    expect(g.py).toBeCloseTo(y0 - 12 - 18);
+    g.input.drag = 25; g.step();
+    expect(g.px).toBeCloseTo(x0 - 10 + C.DRAG_MAX_STEP);
+  });
+
+  it('resta dentro il campo di gioco', () => {
+    const g = new Game(undefined, new Rng(1), memoryStorage());
+    g.startGame('game');
+    g.skipToPlay();
+    // campo vuoto: si resta nella fase di presentazione dello stage (niente nemici)
+    (g as any).setPhase('intro');
+    const hold = () => { (g as any).phaseT = 0; };
+    for (let i = 0; i < 60; i++) { hold(); g.input.drag = -50; g.input.dragY = -50; g.step(); }
+    expect(g.px).toBe(C.PLAYER_MIN_X);
+    expect(g.py).toBe(C.PLAYER_MIN_Y);
+    for (let i = 0; i < 60; i++) { hold(); g.input.drag = 50; g.input.dragY = 50; g.step(); }
+    expect(g.px).toBe(C.PLAYER_MAX_X);
+    expect(g.py).toBe(C.PLAYER_MAX_Y);
+  });
+
+  it('modalità "sotto il dito": la nave raggiunge il punto toccato', () => {
+    const g = newGame();
+    for (let i = 0; i < 40; i++) { g.input.absX = 60; g.input.absY = 150; g.step(); }
+    expect(g.px).toBeCloseTo(60);
+    expect(g.py).toBeCloseTo(150);
+  });
+
+  it('con il dito appoggiato spara da sola, dalla posizione della nave', () => {
+    const g = newGame();
+    g.input.dragY = -12; g.step();
+    let shots = 0;
+    for (let i = 0; i < 120; i++) { g.input.fire = true; g.input.autofire = true; g.step(); shots = g.shots; }
+    expect(shots).toBeGreaterThan(4);
+    const b = g.pBullets.find((x) => x.active)!;
+    expect(b.y).toBeLessThan(g.py);
+  });
+
+  it('volare contro un nemico in formazione è una collisione', () => {
+    const g = newGame();
+    settle(g);
+    for (let k = 0; k < 400 && !active(g).every((e) => e.state === ES.Form); k++) g.step();
+    g.attacksOn = false;
+    const e = active(g).find((x) => x.kind === Kind.Mite)!;
+    g.px = e.x; g.py = e.y + 4;
+    const lives = g.lives;
+    g.step();
+    expect(e.active).toBe(false);
+    expect(g.lives).toBe(lives - 1);
+  });
+});
+
 describe('nemici e punteggio in gioco', () => {
   it('comandante: due colpi, il primo cambia stato senza punti', () => {
     const g = newGame();
