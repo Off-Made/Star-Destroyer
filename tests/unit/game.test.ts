@@ -249,23 +249,64 @@ describe('stage bonus', () => {
   });
 });
 
-describe('game over e high score', () => {
-  it('a vite finite: game over, risultati, high score salvato', () => {
-    const store = memoryStorage();
-    const g = new Game(undefined, new Rng(5), store);
-    g.startGame('game');
-    g.skipToPlay();
-    g.addScore(12345);
-    for (let life = 0; life < 3; life++) {
-      for (let k = 0; k < 2000 && g.playerPhase !== 'alive'; k++) g.step();
+describe('game over, record e home', () => {
+  /** Porta una partita a game over perdendo tutte le vite. */
+  function loseAll(g: Game) {
+    const over = () => (g.phase as string) === 'gameOver';
+    for (let life = 0; life < 10 && !over(); life++) {
+      for (let k = 0; k < 3000 && g.playerPhase !== 'alive' && !over(); k++) g.step();
       g.hitPlayer(0);
     }
-    for (let k = 0; k < 3000 && g.phase !== 'gameOver'; k++) g.step();
+    for (let k = 0; k < 3000 && !over(); k++) g.step();
+  }
+  const runTo = (g: Game, ph: string) => { for (let k = 0; k < 2000 && g.phase !== ph && g.mode !== 'title'; k++) g.step(); };
+
+  it('si parte dalla home e il record iniziale è 0 se non si è mai giocato', () => {
+    const g = new Game(undefined, new Rng(5), memoryStorage());
+    expect(g.mode).toBe('title');
+    expect(g.hiScore).toBe(0);
+    for (let k = 0; k < 5000; k++) g.step(); // la home resta ferma: nessuna partita/demo parte da sola
+    expect(g.mode).toBe('title');
+  });
+
+  it('nuovo record: salvato e annunciato a fine partita', () => {
+    const store = memoryStorage();
+    const g = new Game(undefined, new Rng(5), store);
+    g.startGame('game'); g.skipToPlay();
+    g.addScore(1230);
+    expect(g.hiScore).toBe(1230); // l'HUD si aggiorna in tempo reale
+    loseAll(g);
     expect(g.phase).toBe('gameOver');
-    expect(store.get(C.STORAGE_KEYS.hiScore)).toBe(null); // 12345 < high score di default
-    g.addScore(30000);
-    (g as any).gameOver();
-    expect(store.get(C.STORAGE_KEYS.hiScore)).toBe(String(g.score));
+    expect(store.get(C.STORAGE_KEYS.hiScore)).toBe('1230');
+    runTo(g, 'record');
+    expect(g.phase).toBe('record');
+    for (let k = 0; k < C.T.record + 5; k++) g.step();
+    expect(g.mode).toBe('title');
+    // una nuova istanza (riapertura dell'app) ritrova il record
+    expect(new Game(undefined, new Rng(1), store).hiScore).toBe(1230);
+  });
+
+  it('nessun messaggio di record se il punteggio non supera il precedente', () => {
+    const store = memoryStorage();
+    store.set(C.STORAGE_KEYS.hiScore, '5000');
+    const g = new Game(undefined, new Rng(5), store);
+    expect(g.hiScore).toBe(5000);
+    g.startGame('game'); g.skipToPlay();
+    g.addScore(4000);
+    loseAll(g);
+    runTo(g, 'record');
+    expect(g.mode).toBe('title');
+    expect(g.newHiScore).toBe(false);
+    expect(store.get(C.STORAGE_KEYS.hiScore)).toBe('5000');
+  });
+
+  it('una partita a 0 punti non è un record', () => {
+    const g = new Game(undefined, new Rng(5), memoryStorage());
+    g.startGame('game'); g.skipToPlay();
+    loseAll(g);
+    runTo(g, 'record');
+    expect(g.newHiScore).toBe(false);
+    expect(g.mode).toBe('title');
   });
 
   it('una partita completa simulata non lancia eccezioni e avanza di stage', () => {

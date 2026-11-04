@@ -81,7 +81,7 @@ interface Popup { active: boolean; x: number; y: number; t: number; value: numbe
 export enum CapState { None, Rising, Held, Released, Docking }
 
 export type Mode = 'title' | 'demo' | 'game';
-export type Phase = 'start' | 'intro' | 'play' | 'stageClear' | 'bonusResults' | 'gameOver' | 'results';
+export type Phase = 'start' | 'intro' | 'play' | 'stageClear' | 'bonusResults' | 'gameOver' | 'results' | 'record';
 export type PlayerPhase = 'none' | 'alive' | 'exploding' | 'waiting' | 'ready' | 'captured' | 'docking';
 
 const ENEMY_POOL = 44;
@@ -102,6 +102,8 @@ export class Game {
   score = 0;
   hiScore = 0;
   newHiScore = false;
+  /** Record valido all'inizio della partita: va superato per un "nuovo record". */
+  recordToBeat = 0;
   lives = C.START_LIVES;
   extraGiven = 0;
   shots = 0;
@@ -175,6 +177,7 @@ export class Game {
     this.demoT = 0;
     this.score = 0;
     this.newHiScore = false;
+    this.recordToBeat = this.hiScore;
     this.lives = C.START_LIVES;
     this.extraGiven = 0;
     this.shots = 0;
@@ -297,11 +300,18 @@ export class Game {
         this.updateEnemies();
         this.updateBullets();
         this.starSpeed = Math.max(0, this.starSpeed - 0.01);
-        if (this.phaseT >= C.T.gameOver) this.setPhase('results');
+        if (this.phaseT >= C.T.gameOver) { this.clearAll(); this.setPhase('results'); }
         break;
       case 'results':
-        if (this.phaseT === 1 && this.newHiScore && this.mode === 'game') this.sound.music('hiScore');
-        if (this.phaseT >= C.T.results) this.toTitle();
+        if (this.phaseT >= C.T.results) {
+          if (this.newHiScore && this.mode === 'game') { this.setPhase('record'); this.sound.music('hiScore'); }
+          else this.toTitle();
+        }
+        break;
+      case 'record':
+        // schermata "NUOVO RECORD": stelle veloci come festeggiamento
+        this.starSpeed = 3;
+        if (this.phaseT >= C.T.record) this.toTitle();
         break;
     }
     this.formation.step();
@@ -859,14 +869,19 @@ export class Game {
     this.pendingDrag = 0;
   }
 
+  /** Salva subito il record (es. se l'app viene chiusa a metà partita). */
+  saveRecord() {
+    if (this.mode === 'game' && this.newHiScore) this.storage.set(C.STORAGE_KEYS.hiScore, String(this.hiScore));
+  }
+
   private gameOver() {
     this.playerPhase = 'none';
     this.setPhase('gameOver');
     this.sound.beam(false);
     if (this.mode === 'game') {
       this.sound.music('gameOver');
-      if (this.score > (Number(this.storage.get(C.STORAGE_KEYS.hiScore)) || C.DEFAULT_HISCORE)) {
-        this.storage.set(C.STORAGE_KEYS.hiScore, String(this.score));
+      if (this.newHiScore) {
+        this.storage.set(C.STORAGE_KEYS.hiScore, String(this.hiScore));
       }
     }
   }
@@ -1043,7 +1058,8 @@ export class Game {
   addScore(pts: number) {
     if (pts <= 0) return;
     this.score += pts;
-    if (this.mode === 'game' && this.score > this.hiScore) { this.hiScore = this.score; this.newHiScore = true; }
+    if (this.mode === 'game' && this.score > this.hiScore) this.hiScore = this.score;
+    if (this.mode === 'game' && this.score > this.recordToBeat) this.newHiScore = true;
     while (this.score >= extraLifeThreshold(this.extraGiven)) {
       this.extraGiven++;
       this.lives++;

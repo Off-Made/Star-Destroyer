@@ -56,7 +56,9 @@ Questo materiale appartiene a terzi ed è protetto. Per questo, d'accordo con il
 | R20 | Risultati | colpi sparati, a segno, percentuale con 1 decimale | `hitRatio`, test |
 | R21 | Difficoltà | `difficulty(k)`: intervallo tuffi, tuffatori max, velocità, proiettili per tuffo, fuoco in ingresso | `config.ts` |
 | R22 | HUD | 1UP lampeggiante, HIGH SCORE, vite di riserva in basso a sinistra, badge 50/30/20/10/5/1 in basso a destra | `renderer.ts › hud`, test badge |
-| R23 | High score | localStorage `sd.hiscore` | test game over |
+| R23 | Record | parte da **0** se non si è mai giocato; si aggiorna in tempo reale nell'HUD; salvato in localStorage `sd.hiscore` a fine partita (e se l'app va in background) | test "record iniziale 0", "nuovo record" |
+| R23b | Messaggio nuovo record | dopo GAME OVER e risultati, se il punteggio supera il record valido a inizio partita: schermata "NUOVO RECORD!" con jingle, punteggio e record precedente; nessun messaggio altrimenti (o a 0 punti) | test dedicati |
+| R23c | Home | all'avvio si vede la home (logo, valori nemici, vite extra, record, pulsante START, "come si gioca"); la partita parte **solo** con START (o Invio / Start del gamepad); niente demo automatica (`ATTRACT_DEMO = false`) | test "si parte dalla home", e2e |
 | R24 | Morte | esplosione 96f, attesa che i tuffatori rientrino, READY, respawn al centro | `updatePlayer` |
 
 ### Punti in cui il brief è ambiguo (scelte documentate)
@@ -96,7 +98,8 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Difficoltà crescente | ✅ | `difficulty(k)` |
 | HUD 1UP/HIGH SCORE/vite/badge | ✅ | screenshot |
 | Messaggi STAGE n / READY / GAME OVER / PERFECT ! / PLAYER 1 | ✅ | |
-| Attract: titolo, tabella valori, demo in loop, high score | ✅ | |
+| Home: START obbligatorio, valori nemici, record, istruzioni | ✅ | la demo automatica è disattivata su richiesta (riattivabile con `ATTRACT_DEMO`) |
+| Record a 0 al primo avvio + messaggio "NUOVO RECORD!" | ✅ | test |
 | High score in localStorage | ✅ | test |
 | Esplosione e respawn dopo READY | ✅ | |
 | Canvas 224×288, scala intera, `pixelated`, barre nere | ✅ | e2e |
@@ -110,9 +113,9 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Timestep fisso, nessuna allocazione nel loop caldo, atlas | ✅ | lavoro CPU 0,2–0,8 ms/frame in emulazione |
 | visibilitychange → pausa; Wake Lock | ✅ | Wake Lock solo in HTTPS |
 | PWA: manifest, icone, service worker offline | ✅ | SW attivo solo in HTTPS |
-| TAP TO START + suggerimento una tantum "Aggiungi a Home" | ✅ | |
+| Audio sbloccato dal pulsante START + suggerimento una tantum "Aggiungi a Home" | ✅ | |
 | Tastiera (frecce/A-D, spazio, P, M, Invio) e gamepad | ✅ | |
 | Dev server su 0.0.0.0 + URL LAN + QR | ✅ | `npm run dev` |
-| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 24 + 14 test verdi |
+| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 27 + 14 test verdi |
 | Confronto visivo con `immagini/` | ❌ (voluto) | aspetto originale per scelta; vedi §0 |
 | Aspetto e musiche identici all'originale | ❌ (voluto) | non realizzabile per diritto d'autore |

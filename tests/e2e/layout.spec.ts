@@ -10,14 +10,21 @@ async function boot(page: Page, errors: string[]) {
   // il suggerimento "Aggiungi a Home" è una tantum: lo diamo per già visto
   await page.addInitScript(() => localStorage.setItem('sd.installhint', '1'));
   await page.goto('/');
-  await page.locator('#tap').click();
-  await expect(page.locator('#tap')).toBeHidden();
+  await expect(page.locator('#homeStart')).toBeVisible();
 }
 
 test('layout: niente scroll, canvas in proporzione e dentro lo schermo, controlli raggiungibili', async ({ page }, info) => {
   const errors: string[] = [];
   await boot(page, errors);
   await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${shotDir}/${info.project.name}-home.png` });
+  const hb = await page.locator('#homeStart').boundingBox();
+  const cb = await page.locator('#screen').boundingBox();
+  expect(hb!.y).toBeGreaterThan(cb!.y);
+  expect(hb!.y + hb!.height).toBeLessThanOrEqual(cb!.y + cb!.height);
+  expect(hb!.height).toBeGreaterThan(24);
+  await page.locator('#homeStart').click();
+  await page.waitForFunction(() => !document.getElementById('app')!.classList.contains('home'));
   const m = await page.evaluate(() => {
     const c = document.getElementById('screen')!.getBoundingClientRect();
     const r = (id: string) => { const b = document.getElementById(id)!.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height, vis: getComputedStyle(document.getElementById(id)!).display !== 'none' }; };
@@ -49,14 +56,18 @@ test('layout: niente scroll, canvas in proporzione e dentro lo schermo, controll
       expect(overlap).toBe(false);
     }
   }
-  await page.screenshot({ path: `${shotDir}/${info.project.name}-title.png` });
+  await page.screenshot({ path: `${shotDir}/${info.project.name}-controls.png` });
   expect(errors).toEqual([]);
 });
 
 test('gioco: parte, si muove, spara e mantiene il frame time', async ({ page }, info) => {
   const errors: string[] = [];
   await boot(page, errors);
-  await page.evaluate(() => (window as any).__sd.game.startGame('game'));
+  // la home resta ferma finché non si preme START
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as any).__sd.game.mode)).toBe('title');
+  await page.locator('#homeStart').click();
+  expect(await page.evaluate(() => (window as any).__sd.game.mode)).toBe('game');
   await page.waitForFunction(() => (window as any).__sd.game.playerPhase === 'alive', null, { timeout: 30000 });
   if ((await page.locator('#fire').isVisible())) {
     await page.locator('#fire').dispatchEvent('pointerdown', { pointerId: 7, isPrimary: true });
@@ -71,9 +82,9 @@ test('gioco: parte, si muove, spara e mantiene il frame time', async ({ page }, 
   expect(shots).toBeGreaterThan(0);
   await page.waitForTimeout(3000);
   await page.screenshot({ path: `${shotDir}/${info.project.name}-play.png` });
-  const perf = await page.evaluate(() => ({ frame: (window as any).__sd.loop.frameMs, work: (window as any).__sd.loop.workMs }));
-  console.log(`[${info.project.name}] frame ${perf.frame.toFixed(1)} ms, lavoro CPU ${perf.work.toFixed(2)} ms`);
-  // il costo per frame deve stare ben dentro il budget di 16,7 ms (60 fps)
-  expect(perf.work).toBeLessThan(8);
+  // Benchmark deterministico: 600 tick + render di fila (logica e disegno reali, partita in corso).
+  const perFrame = await page.evaluate(() => (window as any).__sd.bench(600));
+  console.log(`[${info.project.name}] costo medio per frame ${perFrame.toFixed(2)} ms (budget 16,7 ms)`);
+  expect(perFrame).toBeLessThan(4);
   expect(errors).toEqual([]);
 });

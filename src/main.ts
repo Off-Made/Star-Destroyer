@@ -2,7 +2,7 @@
  * Bootstrap: collega gioco, renderer, audio, input e UI del browser.
  */
 import './style.css';
-import { T } from './config';
+import { T, ATTRACT_DEMO } from './config';
 import { Game, Storage } from './game/game';
 import { demoInput } from './game/ai-demo';
 import { FixedLoop, Rng } from './core/loop';
@@ -34,7 +34,7 @@ const renderer = new Renderer(ctx, buildAtlas());
 
 const els: LayoutEls = {
   app: $('app'), canvas, crt: $('crt'), pad: $('pad'), fire: $('fire'),
-  btnL: $('btnL'), btnR: $('btnR'), bar: $('bar'), probe: $('probe'),
+  btnL: $('btnL'), btnR: $('btnR'), bar: $('bar'), probe: $('probe'), homeStart: $('homeStart'), homeHelp: $('homeHelp'),
 };
 
 const isTouch = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
@@ -49,10 +49,16 @@ const setPaused = (p: boolean) => {
   if (paused) audio.beam(false);
 };
 
+/** Avvia la partita: SOLO dalla home (START). In partita riprende dalla pausa. */
 const startGame = () => {
-  audio.unlock();
-  if (game.mode !== 'game' || game.phase === 'results') { touch.clearDrag(); game.startGame('game'); setPaused(false); requestWakeLock(); }
-  else if (paused) setPaused(false);
+  audio.unlock(); // dentro il gesto dell'utente: sblocca l'audio (iOS)
+  if (game.mode !== 'game') {
+    touch.clearDrag();
+    game.startGame('game');
+    setPaused(false);
+    syncHome(); // mostra subito i controlli di gioco
+    requestWakeLock();
+  } else if (paused) setPaused(false);
 };
 
 const actions: HostActions = {
@@ -103,13 +109,12 @@ tapBtn('bPause', actions.pause);
 tapBtn('bMute', toggleMute);
 tapBtn('bSettings', () => openSettings());
 
-// FIRE avvia la partita dal titolo/demo; un tocco sul canvas avvia o riprende
-els.fire.addEventListener('pointerdown', () => { if (game.mode !== 'game' || game.phase === 'results') startGame(); else if (paused) setPaused(false); });
-canvas.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  if (game.mode !== 'game') startGame();
-  else if (paused) setPaused(false);
-});
+tapBtn('homeStart', startGame);
+
+// un tocco sul canvas o su FIRE riprende dalla pausa (non avvia mai la partita)
+const resume = () => { if (game.mode === 'game' && paused) setPaused(false); };
+els.fire.addEventListener('pointerdown', resume);
+canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); resume(); });
 
 // ── Impostazioni ──
 const sControls = $<HTMLSelectElement>('sControls');
@@ -142,20 +147,23 @@ for (const el of [sControls, sDrag, sSens, sAuto, sVibe, sCrt]) el.addEventListe
 $('sClose').addEventListener('click', () => $('settings').classList.add('hidden'));
 syncButtons();
 
-// ── TAP TO START (sblocca l'audio: obbligatorio su iOS) ──
-const tap = $('tap');
-tap.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  audio.unlock();
-  tap.classList.add('hidden');
-  requestWakeLock();
-  setupInstallHint(localStore);
-}, { once: true });
+// ── Home: suggerimento una tantum "Aggiungi a Home" ──
+setTimeout(() => setupInstallHint(localStore), 800);
+let homeShown: boolean | null = null;
+function syncHome() {
+  const home = game.mode === 'title';
+  if (home === homeShown) return;
+  homeShown = home;
+  els.app.classList.toggle('home', home);
+  if (home) setPaused(false);
+}
+syncHome();
 
 // ── Background / foreground ──
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (game.mode === 'game') setPaused(true);
+    game.saveRecord();
     audio.suspend();
     releaseWakeLock();
   } else {
@@ -202,10 +210,11 @@ function tick() {
     touch.apply(inp);
   }
   if (paused) { inp.drag = 0; inp.firePressed = false; return; }
-  if (game.mode === 'title') {
+  if (game.mode === 'title' && ATTRACT_DEMO) {
     if (++titleT > T.title) { titleT = 0; game.startGame('demo'); }
   } else titleT = 0;
   game.step();
+  syncHome();
 }
 const loopObj = new FixedLoop(tick, () => renderer.render(game));
 loopObj.start();
@@ -216,4 +225,12 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureConte
 }
 
 // ganci di diagnostica per i test end-to-end
-(window as any).__sd = { game, loop: loopObj, settings };
+(window as any).__sd = {
+  game, loop: loopObj, settings,
+  /** Benchmark: n tick + render eseguiti di fila, ritorna i ms medi per frame. */
+  bench(n = 600) {
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) { game.step(); renderer.render(game); }
+    return (performance.now() - t0) / n;
+  },
+};

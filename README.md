@@ -28,7 +28,7 @@ npm run icons      # rigenera le icone PWA
 |---|---|---|---|
 | Muovi | trascina nel riquadro TRASCINA (o pulsanti ◀ ▶) | ← → / A D | stick / d-pad |
 | Spara | FIRE (tenendo premuto = auto-fire) | Spazio / Z / X | A / B |
-| Start | START, FIRE o tocco sullo schermo | Invio | Start |
+| Start (solo dalla home) | pulsante START | Invio | Start |
 | Pausa | II | P / Esc | Select |
 | Audio | ♪ | M | |
 

@@ -207,6 +207,7 @@ export class Renderer {
         }
         break;
       case 'gameOver': this.textC('GAME OVER', y, 'C'); break;
+      case 'record': this.record(g); break;
       case 'results': {
         this.textC('- RESULTS -', 96, 'R');
         this.text('SHOTS FIRED', 24, 128, 'Y'); this.number(g.shots, 200, 128, 'Y', 1);
@@ -218,7 +219,6 @@ export class Renderer {
         this.text('.', 168, 168, 'W');
         this.number(dec, 184, 168, 'W', 1);
         this.text('%', 192, 168, 'W');
-        if (g.newHiScore && g.mode === 'game' && ((g.frame >> 4) & 1)) this.textC('NEW HIGH SCORE !', 200, 'M');
         break;
       }
     }
@@ -226,28 +226,56 @@ export class Renderer {
     if (g.captureMsgT > 0) this.textC('SHIP CAPTURED', 124, 'R');
   }
 
-  // ── Titolo / attract ──
+  // ── Home ──
   private title(g: Game) {
     const ctx = this.ctx;
     const logo = this.atlas.logo;
     const t = g.phaseT;
-    const ly = Math.max(28, 120 - t * 2);
+    const ly = Math.max(26, 110 - t * 2);
     ctx.drawImage(logo, Math.floor((C.SCREEN_W - logo.width) / 2), ly);
-    if (t < 50) return;
-    this.textC('- ENEMY VALUES -', 108, 'C');
-    this.text('FORMATION', 72, 124, 'S');
-    this.text('DIVE', 168, 124, 'S');
-    if (t > 70) this.valueRow(140, (g.frame >> 5) & 1 ? Spr.Mite1 : Spr.Mite0, C.SCORE.mite.formation, C.SCORE.mite.diving, false);
-    if (t > 90) this.valueRow(160, (g.frame >> 5) & 1 ? Spr.Raider1 : Spr.Raider0, C.SCORE.raider.formation, C.SCORE.raider.diving, false);
-    if (t > 110) this.valueRow(180, (g.frame >> 5) & 1 ? Spr.Warden1 : Spr.Warden0, C.SCORE.warden.formation, C.SCORE.warden.diving[0], true);
-    if (t > 140) {
-      this.textC('BONUS FOR EVERY', 214, 'C');
-      this.number(C.EXTRA_LIFE_FIRST, 88, 226, 'Y', 1); this.text('AND', 96, 226, 'C');
-      this.number(C.EXTRA_LIFE_SECOND, 176, 226, 'Y', 1);
-      this.textC('PTS', 236, 'C');
+    if (t < 45) return;
+    this.textC('- VALORE NEMICI -', 100, 'C');
+    this.text('FORMAZIONE', 56, 114, 'S');
+    this.text('ATTACCO', 152, 114, 'S');
+    const f = (g.frame >> 5) & 1;
+    if (t > 60) this.valueRow(128, f ? Spr.Mite1 : Spr.Mite0, C.SCORE.mite.formation, C.SCORE.mite.diving, false);
+    if (t > 75) this.valueRow(146, f ? Spr.Raider1 : Spr.Raider0, C.SCORE.raider.formation, C.SCORE.raider.diving, false);
+    if (t > 90) this.valueRow(164, f ? Spr.Warden1 : Spr.Warden0, C.SCORE.warden.formation, C.SCORE.warden.diving[0], true);
+    if (t > 105) {
+      this.text('VITA EXTRA', 24, 188, 'C');
+      this.number(C.EXTRA_LIFE_FIRST, 152, 188, 'Y', 1);
+      this.text('-', 152, 188, 'C');
+      this.number(C.EXTRA_LIFE_SECOND, 200, 188, 'Y', 1);
     }
-    if ((g.frame >> 5) & 1) this.textC(this.startLabel === 'TAP' ? 'TAP TO START' : 'PUSH START', 252, 'Y');
+    if (t > 120) {
+      if (g.hiScore > 0) {
+        this.text('RECORD', 48, 204, 'M');
+        this.number(g.hiScore, 176, 204, 'W', 1);
+      } else this.textC('NESSUN RECORD ANCORA', 204, 'M');
+    }
+    // il pulsante START (DOM) occupa la fascia y 220-246
+    if (this.startLabel === 'PUSH' && (g.frame >> 5) & 1) this.textC('O PREMI INVIO', 254, 'Y');
     this.textC('ORIGINAL ARCADE TRIBUTE', 274, 'D');
+  }
+
+  /** Schermata di fine partita con nuovo record. */
+  private record(g: Game) {
+    const ctx = this.ctx;
+    ctx.setTransform(2, 0, 0, 2, 0, 0); // testo ×2, nessuna allocazione
+    if ((g.frame >> 4) & 1) this.text('NUOVO RECORD!', 4, 52, 'M');
+    else this.text('NUOVO RECORD!', 4, 52, 'Y');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.textC('COMPLIMENTI !', 140, 'C');
+    this.textC('HAI SUPERATO IL RECORD', 164, 'W');
+    if (g.recordToBeat > 0) {
+      this.text('PRECEDENTE', 24, 180, 'S');
+      this.number(g.recordToBeat, 200, 180, 'S', 1);
+    }
+    this.textC('IL TUO PUNTEGGIO', 204, 'Y');
+    const d = this.digits(g.score);
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    this.number(g.score, (C.SCREEN_W + d * 16) / 4, 110, 'W', 1);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   private valueRow(y: number, spr: Spr, a: number, b: number, extra: boolean) {

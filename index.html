@@ -33,12 +33,13 @@
     <div id="btnR" class="zone dir">▶</div>
     <div id="fire" class="zone">FIRE</div>
 
-    <div id="tap" class="overlay">
-      <div class="tap-box">
-        <div class="tap-title">STAR DESTROYER</div>
-        <div class="tap-blink">TAP TO START</div>
-        <div class="tap-sub">tocca per attivare l'audio</div>
-      </div>
+    <!-- Home: la partita parte SOLO da questo pulsante (o Invio / Start del gamepad) -->
+    <button id="homeStart" aria-label="Inizia la partita">START</button>
+    <div id="homeHelp">
+      <div class="hh-title">COME SI GIOCA</div>
+      <div class="hh-row"><span class="hh-ico">◀ ▶</span> trascina nel riquadro per muoverti</div>
+      <div class="hh-row"><span class="hh-ico fire">●</span> tieni premuto FIRE per sparare</div>
+      <div class="hh-row"><span class="hh-ico">★</span> batti il record: resta salvato qui</div>
     </div>
 
     <div id="settings" class="overlay hidden" role="dialog" aria-label="Impostazioni">

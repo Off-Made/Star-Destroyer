@@ -111,6 +111,7 @@ export const T = {
   bonusResults: 300,
   gameOver: 200,
   results: 360,
+  record: 360,
   title: 600,
   demo: 1800,
   scorePopup: 70,
@@ -152,8 +153,10 @@ export const PALETTE: Record<string, string> = {
   K: '#000000',
 };
 
-/** High score mostrato alla prima accensione. */
-export const DEFAULT_HISCORE = 20000;
+/** Record iniziale: 0 finché l'utente non ha mai giocato. */
+export const DEFAULT_HISCORE = 0;
+/** Demo automatica dalla home: disattivata (la partita parte solo con START). */
+export const ATTRACT_DEMO = false;
 
 export const STORAGE_KEYS = {
   hiScore: 'sd.hiscore',

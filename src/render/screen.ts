@@ -15,6 +15,8 @@ export interface LayoutEls {
   btnR: HTMLElement;
   bar: HTMLElement;
   probe: HTMLElement;
+  homeStart: HTMLElement;
+  homeHelp: HTMLElement;
 }
 
 export interface LayoutResult {
@@ -62,6 +64,8 @@ export function layout(els: LayoutEls, touch: boolean, buttonsMode: boolean): La
   const y = touch && portrait ? st + Math.max(0, Math.min(8, gameH - cssH)) : st + (gameH - cssH) / 2;
   place(els.canvas, x, y, cssW, cssH);
   place(els.crt, x, y, cssW, cssH);
+  // pulsante START della home, sopra il canvas nella fascia y 220–246 (coordinate logiche)
+  place(els.homeStart, x + cssW * 0.18, y + cssH * (220 / SCREEN_H), cssW * 0.64, cssH * (26 / SCREEN_H));
 
   els.app.classList.toggle('touch', touch);
   els.app.classList.toggle('portrait', portrait);
@@ -80,6 +84,8 @@ export function layout(els: LayoutEls, touch: boolean, buttonsMode: boolean): La
     place(els.fire, fireX, ctrlTop + (ctrlH - fireSize) / 2, fireSize, fireSize);
     const padW = fireX - sl - 22;
     place(els.pad, sl + 8, ctrlTop, padW, ctrlH);
+    place(els.homeHelp, sl + 8, ctrlTop + 4, availW - 16, ctrlH - 8);
+    els.homeHelp.classList.toggle('compact', ctrlH - 8 < 130); // schermi bassi (es. iPhone SE)
     place(els.btnL, sl + 8, ctrlTop, padW / 2 - 4, ctrlH);
     place(els.btnR, sl + 8 + padW / 2 + 4, ctrlTop, padW / 2 - 4, ctrlH);
   } else if (touch) {
