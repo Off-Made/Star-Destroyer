@@ -55,6 +55,9 @@ export interface Atlas {
   font: HTMLCanvasElement;
   fontIndex: Int16Array; // charCode → colonna
   logo: HTMLCanvasElement;
+  /** Parola START nello stesso stile del logo: normale e "accesa" (per il lampeggio). */
+  start: HTMLCanvasElement;
+  startLit: HTMLCanvasElement;
   badges: Map<number, HTMLCanvasElement>;
 }
 
@@ -116,7 +119,9 @@ export function buildAtlas(): Atlas {
   });
 
   // ── Logo: lettere ×3 con gradiente e contorno ──
-  const logo = buildLogo();
+  const logo = buildLogo(['STAR', 'DESTROYER'], LOGO_GRAD);
+  const start = buildLogo(['START'], LOGO_GRAD);
+  const startLit = buildLogo(['START'], LIT_GRAD);
 
   // ── Badge ──
   const badges = new Map<number, HTMLCanvasElement>();
@@ -133,16 +138,20 @@ export function buildAtlas(): Atlas {
     badges.set(v, c);
   }
 
-  return { sprites, fx, font, fontIndex, logo, badges };
+  return { sprites, fx, font, fontIndex, logo, start, startLit, badges };
 }
 
-function buildLogo(): HTMLCanvasElement {
-  const lines = ['STAR', 'DESTROYER'];
+/** Gradiente del logo (riga per riga del glifo) e variante "accesa" per il lampeggio. */
+const LOGO_GRAD = ['Y', 'Y', 'O', 'O', 'R', 'M', 'P'];
+const LIT_GRAD = ['W', 'W', 'Y', 'Y', 'O', 'O', 'R'];
+
+/** Scritta in stile logo: pixel ×3, gradiente verticale, contorno blu con ombra. */
+function buildLogo(lines: string[], grad: string[]): HTMLCanvasElement {
   const S = 3; // scala dei pixel del logo
-  const w = 9 * 6 * S + 8, h = 2 * 9 * S + 8;
+  const maxLen = Math.max(...lines.map((l) => l.length));
+  const w = maxLen * 6 * S + 8, h = lines.length * 9 * S + 8;
   const c = canvas(w, h);
   const ctx = c.getContext('2d')!;
-  const grad = ['Y', 'Y', 'O', 'O', 'R', 'M', 'P'];
   const pass = (outline: boolean) => {
     lines.forEach((line, li) => {
       const lw = line.length * 6 * S;

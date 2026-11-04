@@ -253,7 +253,9 @@ export class Renderer {
         this.number(g.hiScore, 176, 204, 'W', 1);
       } else this.textC('NESSUN RECORD ANCORA', 204, 'M');
     }
-    // il pulsante START (DOM) occupa la fascia y 220-246
+    // START nello stile del logo; l'area cliccabile è un <button> trasparente sopra (fascia y 220-246)
+    const word = (g.frame >> 5) & 1 ? this.atlas.startLit : this.atlas.start;
+    ctx.drawImage(word, Math.floor((C.SCREEN_W - word.width) / 2), 220);
     if (this.startLabel === 'PUSH' && (g.frame >> 5) & 1) this.textC('O PREMI INVIO', 254, 'Y');
     this.textC('ORIGINAL ARCADE TRIBUTE', 274, 'D');
   }
