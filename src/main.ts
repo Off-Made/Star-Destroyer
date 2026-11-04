@@ -14,6 +14,7 @@ import { Keyboard, Gamepads, HostActions } from './input/keys';
 import { TouchControls } from './input/touch';
 import { loadSettings, saveSettings, Settings } from './ui/settings';
 import { setupInstallHint } from './ui/install';
+import { setPixelLabel, pauseIcon, fireButton } from './ui/pixel';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -25,7 +26,8 @@ const localStore: Storage = {
 const settings: Settings = loadSettings(localStore);
 const audio = new AudioEngine();
 audio.vibrate = settings.vibrate;
-audio.setMuted(settings.muted);
+audio.setMusic(settings.music);
+audio.setSfx(settings.sfx);
 
 const game = new Game(audio, new Rng((Date.now() & 0xffffff) | 1), localStore);
 const canvas = $<HTMLCanvasElement>('screen');
@@ -34,23 +36,48 @@ const renderer = new Renderer(ctx, buildAtlas());
 
 const els: LayoutEls = {
   app: $('app'), canvas, crt: $('crt'), pad: $('pad'), fire: $('fire'),
-  btnL: $('btnL'), btnR: $('btnR'), bar: $('bar'), probe: $('probe'), homeStart: $('homeStart'), homeHelp: $('homeHelp'),
+  bar: $('bar'), pause: $('bPause'), probe: $('probe'), homeStart: $('homeStart'), homeHelp: $('homeHelp'),
 };
+
+// ── Grafica retrò dei controlli (generata una volta dai glifi del gioco) ──
+for (const el of document.querySelectorAll<HTMLElement>('[data-px]')) setPixelLabel(el, el.dataset.px!, el.dataset.col ?? 'Y');
+setPixelLabel($('padLabel'), 'TRASCINA QUI', 'C');
+setPixelLabel($('bSettings'), 'OPZIONI', 'C');
+setPixelLabel($('mHome'), 'HOME', 'M');
+setPixelLabel($('mResume'), 'RIPRENDI', 'Y');
+$('bPause').replaceChildren(pauseIcon());
+{
+  const up = fireButton(false), down = fireButton(true);
+  up.classList.add('up'); down.classList.add('down');
+  els.fire.replaceChildren(up, down);
+}
 
 const isTouch = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 let touchUI = isTouch();
 renderer.startLabel = touchUI ? 'TAP' : 'PUSH';
 
-let paused = false;
-const setPaused = (p: boolean) => {
-  paused = p && game.mode !== 'title';
-  renderer.paused = paused;
-  $('bPause').classList.toggle('on', paused);
-  if (paused) audio.beam(false);
+const keyboardActions: HostActions = {
+  start: () => startGame(),
+  pause: () => { if (game.mode === 'game') setPaused(!paused); },
+  mute: () => toggleMusic(),
 };
+const keyboard = new Keyboard(keyboardActions);
+const pads = new Gamepads(keyboardActions);
+const touch = new TouchControls(els.pad, els.fire, settings, () => {});
+touch.onAnyTouch = () => audio.resume();
+
+// ── Pausa e menu di pausa ──
+let paused = false;
+const pauseMenu = $('pauseMenu');
+function setPaused(p: boolean) {
+  paused = p && game.mode === 'game';
+  renderer.paused = paused;
+  pauseMenu.classList.toggle('hidden', !paused);
+  if (paused) { audio.beam(false); touch.reset(); }
+}
 
 /** Avvia la partita: SOLO dalla home (START). In partita riprende dalla pausa. */
-const startGame = () => {
+function startGame() {
   audio.unlock(); // dentro il gesto dell'utente: sblocca l'audio (iOS)
   if (game.mode !== 'game') {
     touch.clearDrag();
@@ -59,95 +86,88 @@ const startGame = () => {
     syncHome(); // mostra subito i controlli di gioco
     requestWakeLock();
   } else if (paused) setPaused(false);
-};
+}
 
-const actions: HostActions = {
-  start: startGame,
-  pause: () => { if (game.mode !== 'title') setPaused(!paused); },
-  mute: () => toggleMute(),
-};
+/** Torna alla home abbandonando la partita. */
+function goHome() {
+  game.saveRecord(); // un record fatto prima di abbandonare non va perso
+  setPaused(false);
+  game.toTitle();
+  syncHome();
+}
 
-const keyboard = new Keyboard(actions);
-const pads = new Gamepads(actions);
-const touch = new TouchControls(els.pad, els.fire, els.btnL, els.btnR, settings, () => {});
-touch.onAnyTouch = () => audio.resume();
-
-function toggleMute() {
-  settings.muted = !settings.muted;
-  audio.setMuted(settings.muted);
+function toggleMusic() {
+  settings.music = !settings.music;
+  audio.setMusic(settings.music);
   saveSettings(localStore, settings);
   syncButtons();
 }
 function syncButtons() {
-  $('bMute').textContent = settings.muted ? '×' : '♪';
-  $('bMute').classList.toggle('on', settings.muted);
+  const label = settings.music ? 'MUSICA ON' : 'MUSICA OFF';
+  const col = settings.music ? 'L' : 'S';
+  setPixelLabel($('mMusic'), label, col);
+  setPixelLabel($('bMusic'), label, col);
   els.app.classList.toggle('crt', settings.crt);
 }
 
 // ── Layout ──
 let lastLayoutKey = '';
 function relayout(force = false) {
-  const key = `${innerWidth}x${innerHeight}@${devicePixelRatio}:${touchUI}:${settings.controls}`;
+  const home = game.mode === 'title';
+  const key = `${innerWidth}x${innerHeight}@${devicePixelRatio}:${touchUI}:${home}`;
   if (!force && key === lastLayoutKey) return;
   lastLayoutKey = key;
-  const r = layout(els, touchUI, settings.controls === 'buttons');
+  const r = layout(els, touchUI, home);
   touch.cssPerPixel = r.cssW / 224;
   $('rotate').classList.toggle('hidden', !(touchUI && !r.portrait && r.cssH < 300));
 }
 addEventListener('resize', () => relayout());
 addEventListener('orientationchange', () => setTimeout(() => relayout(true), 250));
 window.visualViewport?.addEventListener('resize', () => relayout());
-relayout(true);
 
 // ── Pulsanti ──
 const tapBtn = (id: string, fn: () => void) => {
-  const el = $(id);
-  el.addEventListener('pointerdown', (e) => { e.preventDefault(); audio.unlock(); fn(); });
+  $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); audio.unlock(); fn(); });
 };
-tapBtn('bStart', startGame);
-tapBtn('bPause', actions.pause);
-tapBtn('bMute', toggleMute);
-tapBtn('bSettings', () => openSettings());
-
 tapBtn('homeStart', startGame);
+tapBtn('bPause', () => setPaused(true));
+tapBtn('bMusic', toggleMusic);
+tapBtn('bSettings', () => openSettings());
+tapBtn('mHome', goHome);
+tapBtn('mMusic', toggleMusic);
+tapBtn('mResume', () => setPaused(false));
 
-// un tocco sul canvas o su FIRE riprende dalla pausa (non avvia mai la partita)
-const resume = () => { if (game.mode === 'game' && paused) setPaused(false); };
-els.fire.addEventListener('pointerdown', resume);
-canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); resume(); });
-
-// ── Impostazioni ──
-const sControls = $<HTMLSelectElement>('sControls');
+// ── Opzioni (dalla home) ──
 const sDrag = $<HTMLSelectElement>('sDragMode');
 const sSens = $<HTMLInputElement>('sSens');
 const sAuto = $<HTMLInputElement>('sAuto');
+const sSfx = $<HTMLInputElement>('sSfx');
 const sVibe = $<HTMLInputElement>('sVibe');
 const sCrt = $<HTMLInputElement>('sCrt');
 function openSettings() {
-  if (game.mode === 'game') setPaused(true);
-  sControls.value = settings.controls; sDrag.value = settings.dragMode;
+  sDrag.value = settings.dragMode;
   sSens.value = String(settings.sensitivity); $('sSensV').textContent = settings.sensitivity.toFixed(1);
-  sAuto.checked = settings.autofire; sVibe.checked = settings.vibrate; sCrt.checked = settings.crt;
+  sAuto.checked = settings.autofire; sSfx.checked = settings.sfx; sVibe.checked = settings.vibrate; sCrt.checked = settings.crt;
   $('settings').classList.remove('hidden');
 }
 const readSettings = () => {
-  settings.controls = sControls.value as Settings['controls'];
   settings.dragMode = sDrag.value as Settings['dragMode'];
   settings.sensitivity = Number(sSens.value);
   settings.autofire = sAuto.checked;
+  settings.sfx = sSfx.checked;
   settings.vibrate = sVibe.checked;
   settings.crt = sCrt.checked;
   $('sSensV').textContent = settings.sensitivity.toFixed(1);
   audio.vibrate = settings.vibrate;
+  audio.setSfx(settings.sfx);
   saveSettings(localStore, settings);
   syncButtons();
-  relayout(true);
 };
-for (const el of [sControls, sDrag, sSens, sAuto, sVibe, sCrt]) el.addEventListener('input', readSettings);
-$('sClose').addEventListener('click', () => $('settings').classList.add('hidden'));
+for (const el of [sDrag, sSens, sAuto, sSfx, sVibe, sCrt]) el.addEventListener('input', readSettings);
+tapBtn('sClose', () => $('settings').classList.add('hidden'));
 syncButtons();
 
-// ── Home: suggerimento una tantum "Aggiungi a Home" ──
+// ── Home ──
 setTimeout(() => setupInstallHint(localStore), 800);
 let homeShown: boolean | null = null;
 function syncHome() {
@@ -156,13 +176,14 @@ function syncHome() {
   homeShown = home;
   els.app.classList.toggle('home', home);
   if (home) setPaused(false);
+  relayout(true);
 }
 syncHome();
 
 // ── Background / foreground ──
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    if (game.mode === 'game') setPaused(true);
+    if (game.mode === 'game') setPaused(true); // al ritorno si trova il menu di pausa
     game.saveRecord();
     audio.suspend();
     releaseWakeLock();
@@ -173,7 +194,9 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 addEventListener('pageshow', () => audio.resume());
-addEventListener('pointerdown', () => { if (!touchUI && isTouch() && navigator.maxTouchPoints > 0) { touchUI = true; renderer.startLabel = 'TAP'; relayout(true); } }, { passive: true });
+addEventListener('pointerdown', () => {
+  if (!touchUI && isTouch() && navigator.maxTouchPoints > 0) { touchUI = true; renderer.startLabel = 'TAP'; relayout(true); }
+}, { passive: true });
 addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
@@ -205,9 +228,9 @@ function tick() {
     inp.drag = 0;
     inp.firePressed = false;
   } else {
-    keyboard.apply(inp);
+    keyboard.apply(inp); // frecce / A-D: solo tastiera da PC
     pads.apply(inp);
-    touch.apply(inp);
+    touch.apply(inp);    // da telefono: solo trascinamento + FIRE
   }
   if (paused) { inp.drag = 0; inp.firePressed = false; return; }
   if (game.mode === 'title' && ATTRACT_DEMO) {
@@ -226,7 +249,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureConte
 
 // ganci di diagnostica per i test end-to-end
 (window as any).__sd = {
-  game, loop: loopObj, settings,
+  game, loop: loopObj, settings, audio,
+  isPaused: () => paused,
   /** Benchmark: n tick + render eseguiti di fila, ritorna i ms medi per frame. */
   bench(n = 600) {
     const t0 = performance.now();

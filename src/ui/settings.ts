@@ -3,29 +3,36 @@ import { STORAGE_KEYS } from '../config';
 import type { Storage } from '../game/game';
 
 export interface Settings {
-  controls: 'drag' | 'buttons';
   dragMode: 'relative' | 'absolute';
   sensitivity: number;
   autofire: boolean;
+  /** Musica (jingle) attiva. */
+  music: boolean;
+  /** Effetti sonori attivi. */
+  sfx: boolean;
   vibrate: boolean;
   crt: boolean;
-  muted: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  controls: 'drag',
   dragMode: 'relative',
   sensitivity: 1.5,
   autofire: true,
+  music: true,
+  sfx: true,
   vibrate: true,
   crt: false,
-  muted: false,
 };
 
 export function loadSettings(store: Storage): Settings {
   try {
     const raw = store.get(STORAGE_KEYS.settings);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      const s = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      delete (s as any).controls; // opzione rimossa (pulsanti ◀ ▶)
+      delete (s as any).muted;    // sostituita da music / sfx
+      return s;
+    }
   } catch { /* JSON corrotto: si torna ai default */ }
   return { ...DEFAULT_SETTINGS };
 }

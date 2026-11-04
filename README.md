@@ -26,13 +26,13 @@ npm run icons      # rigenera le icone PWA
 ## Comandi
 | | Touch | Tastiera | Gamepad |
 |---|---|---|---|
-| Muovi | trascina nel riquadro TRASCINA (o pulsanti ◀ ▶) | ← → / A D | stick / d-pad |
+| Muovi | **solo** trascinando il dito nel riquadro TRASCINA QUI | ← → / A D | stick / d-pad |
 | Spara | FIRE (tenendo premuto = auto-fire) | Spazio / Z / X | A / B |
 | Start (solo dalla home) | pulsante START | Invio | Start |
-| Pausa | II | P / Esc | Select |
-| Audio | ♪ | M | |
+| Pausa | tastino II in alto a destra → menu HOME / MUSICA ON-OFF / RIPRENDI | P / Esc | Select |
+| Musica | MUSICA ON/OFF (home e menu di pausa) | M | |
 
-In ⚙ trovi: controlli a trascinamento o a pulsanti, trascinamento relativo o assoluto, sensibilità, auto-fire, vibrazione ed effetto CRT.
+In OPZIONI (dalla home) trovi: trascinamento relativo o assoluto, sensibilità, auto-fire, effetti sonori, vibrazione ed effetto CRT.
 
 ## Installare come app (PWA)
 - **iPhone/iPad (Safari):** Condividi → *Aggiungi alla schermata Home*. Si apre a schermo intero e funziona offline.

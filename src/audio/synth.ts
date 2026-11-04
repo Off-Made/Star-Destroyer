@@ -25,7 +25,9 @@ export class AudioEngine implements SoundSink {
   private musicNodes: AudioScheduledSourceNode[] = [];
   private beamNodes: AudioScheduledSourceNode[] | null = null;
   private silentEl: HTMLAudioElement | null = null;
-  muted = false;
+  /** Musica (jingle) attiva / effetti sonori attivi: regolabili separatamente. */
+  musicOn = true;
+  sfxOn = true;
   vibrate = true;
 
   /** Da chiamare dentro un evento di input utente. */
@@ -49,21 +51,28 @@ export class AudioEngine implements SoundSink {
   resume() { if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume(); }
   suspend() { if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend(); }
 
-  setMuted(m: boolean) {
-    this.muted = m;
-    if (this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.55, this.ctx.currentTime, 0.02);
+  setMusic(on: boolean) {
+    this.musicOn = on;
+    if (!on) this.stopMusic();
+    if (this.ctx) this.musicBus.gain.setTargetAtTime(on ? 0.8 : 0, this.ctx.currentTime, 0.02);
+  }
+
+  setSfx(on: boolean) {
+    this.sfxOn = on;
+    if (!on) this.beam(false);
+    if (this.ctx) this.sfxBus.gain.setTargetAtTime(on ? 0.9 : 0, this.ctx.currentTime, 0.02);
   }
 
   private build() {
     const ctx = this.ctx!;
     this.master = ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.55;
+    this.master.gain.value = 0.55;
     // compressore leggero: volumi bilanciati senza clipping
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -12; comp.ratio.value = 4;
     this.master.connect(comp).connect(ctx.destination);
-    this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = 0.9; this.sfxBus.connect(this.master);
-    this.musicBus = ctx.createGain(); this.musicBus.gain.value = 0.8; this.musicBus.connect(this.master);
+    this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = this.sfxOn ? 0.9 : 0; this.sfxBus.connect(this.master);
+    this.musicBus = ctx.createGain(); this.musicBus.gain.value = this.musicOn ? 0.8 : 0; this.musicBus.connect(this.master);
     const len = ctx.sampleRate;
     this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = this.noise.getChannelData(0);
@@ -142,7 +151,7 @@ export class AudioEngine implements SoundSink {
   // ── SoundSink ──
   sfx(id: Sfx) {
     const ctx = this.ctx;
-    if (!ctx || this.muted) return;
+    if (!ctx || !this.sfxOn) return;
     const t = ctx.currentTime;
     switch (id) {
       case 'shot':
@@ -200,6 +209,7 @@ export class AudioEngine implements SoundSink {
     const ctx = this.ctx;
     if (!ctx) return;
     this.stopMusic();
+    if (!this.musicOn) return;
     const tr = TRACKS[id];
     const spb = 60 / tr.bpm;
     const t0 = ctx.currentTime + 0.03;
@@ -224,7 +234,7 @@ export class AudioEngine implements SoundSink {
   beam(on: boolean) {
     const ctx = this.ctx;
     if (!ctx) return;
-    if (on && !this.beamNodes) {
+    if (on && !this.beamNodes && this.sfxOn) {
       const t = ctx.currentTime;
       const o = ctx.createOscillator(); o.setPeriodicWave(this.waves.pulse25!); o.frequency.value = 420;
       const lfo = ctx.createOscillator(); lfo.frequency.value = 7;

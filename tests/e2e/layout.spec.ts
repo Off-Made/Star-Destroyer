@@ -88,3 +88,43 @@ test('gioco: parte, si muove, spara e mantiene il frame time', async ({ page }, 
   expect(perFrame).toBeLessThan(4);
   expect(errors).toEqual([]);
 });
+
+test('in partita: niente frecce, solo pausa → menu HOME / MUSICA / RIPRENDI', async ({ page }, info) => {
+  const errors: string[] = [];
+  await boot(page, errors);
+  await page.locator('#homeStart').click();
+  await page.waitForFunction(() => (window as any).__sd.game.playerPhase === 'alive', null, { timeout: 30000 });
+
+  // nessun pulsante direzionale né frecce nell'interfaccia
+  expect(await page.locator('#btnL, #btnR, .dir').count()).toBe(0);
+  expect(await page.evaluate(() => /[◀▶←→]/.test(document.body.innerText))).toBe(false);
+  // della barra resta visibile solo il tastino pausa
+  await expect(page.locator('#bar')).toBeHidden();
+  await expect(page.locator('#bPause')).toBeVisible();
+
+  await page.locator('#bPause').click();
+  await expect(page.locator('#pauseMenu')).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__sd.isPaused())).toBe(true);
+  await page.screenshot({ path: `${shotDir}/${info.project.name}-pause.png` });
+
+  // MUSICA ON → OFF (e ritorno)
+  expect(await page.locator('#mMusic').getAttribute('aria-label')).toBe('MUSICA ON');
+  await page.locator('#mMusic').click();
+  expect(await page.locator('#mMusic').getAttribute('aria-label')).toBe('MUSICA OFF');
+  expect(await page.evaluate(() => (window as any).__sd.audio.musicOn)).toBe(false);
+  await page.locator('#mMusic').click();
+  expect(await page.evaluate(() => (window as any).__sd.audio.musicOn)).toBe(true);
+
+  // RIPRENDI
+  await page.locator('#mResume').click();
+  await expect(page.locator('#pauseMenu')).toBeHidden();
+  expect(await page.evaluate(() => (window as any).__sd.isPaused())).toBe(false);
+
+  // HOME
+  await page.locator('#bPause').click();
+  await page.locator('#mHome').click();
+  await expect(page.locator('#pauseMenu')).toBeHidden();
+  expect(await page.evaluate(() => (window as any).__sd.game.mode)).toBe('title');
+  await expect(page.locator('#homeStart')).toBeVisible();
+  expect(errors).toEqual([]);
+});

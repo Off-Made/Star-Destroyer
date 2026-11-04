@@ -107,8 +107,9 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Audio sintetizzato: sparo, esplosioni per tipo, morte, raggio, cattura, liberazione, vita extra, bonus, perfect, game over, high score, avvio | ✅ | jingle originali |
 | AudioContext sbloccato al tocco, ripresa dal background, interruttore silenzioso iOS, mute | ✅ | da provare su un iPhone reale |
 | Viewport cover, dvh, safe-area, niente scroll/zoom/selezione/menu | ✅ | e2e |
-| Drag relativo/assoluto con sensibilità, FIRE grande con autofire, pulsanti ◀ ▶, multitouch | ✅ | |
-| Pausa, mute, start, impostazioni | ✅ | |
+| Da telefono movimento SOLO col trascinamento (relativo/assoluto, sensibilità), FIRE in pixel art con autofire, multitouch; nessun pulsante direzionale | ✅ | e2e verifica l'assenza di frecce |
+| In partita solo il tastino pausa → menu retrò HOME / MUSICA ON-OFF / RIPRENDI; opzioni dalla home | ✅ | e2e "menu di pausa" |
+| Interfaccia in stile retrò (pixel font del gioco, cornici a gradini) | ✅ | `ui/pixel.ts` |
 | Vibrazione (Android) | ✅ | |
 | Timestep fisso, nessuna allocazione nel loop caldo, atlas | ✅ | lavoro CPU 0,2–0,8 ms/frame in emulazione |
 | visibilitychange → pausa; Wake Lock | ✅ | Wake Lock solo in HTTPS |
@@ -116,6 +117,6 @@ vite.config.ts         plugin che genera il service worker con il precache della
 | Audio sbloccato dal pulsante START + suggerimento una tantum "Aggiungi a Home" | ✅ | |
 | Tastiera (frecce/A-D, spazio, P, M, Invio) e gamepad | ✅ | |
 | Dev server su 0.0.0.0 + URL LAN + QR | ✅ | `npm run dev` |
-| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 27 + 14 test verdi |
+| Test Vitest + Playwright su 7 profili dispositivo | ✅ | 27 + 21 test verdi |
 | Confronto visivo con `immagini/` | ❌ (voluto) | aspetto originale per scelta; vedi §0 |
 | Aspetto e musiche identici all'originale | ❌ (voluto) | non realizzabile per diritto d'autore |

@@ -21,52 +21,61 @@
     <canvas id="screen" width="224" height="288" aria-label="Area di gioco"></canvas>
     <div id="crt"></div>
 
+    <!-- Barra della home: musica e opzioni (le etichette in pixel font sono generate da JS) -->
     <div id="bar">
-      <button id="bStart" class="ctl" aria-label="Start">START</button>
-      <button id="bPause" class="ctl" aria-label="Pausa">II</button>
-      <button id="bMute" class="ctl" aria-label="Audio">♪</button>
-      <button id="bSettings" class="ctl" aria-label="Impostazioni">⚙</button>
+      <button id="bMusic" class="rbtn" aria-label="Musica">MUSICA</button>
+      <button id="bSettings" class="rbtn" aria-label="Opzioni">OPZIONI</button>
     </div>
 
-    <div id="pad" class="zone"><span>◀ &nbsp; TRASCINA &nbsp; ▶</span></div>
-    <div id="btnL" class="zone dir">◀</div>
-    <div id="btnR" class="zone dir">▶</div>
-    <div id="fire" class="zone">FIRE</div>
+    <!-- In partita: solo il tastino pausa, nell'angolo dell'HUD -->
+    <button id="bPause" class="rbtn icon" aria-label="Pausa"></button>
 
-    <!-- Home: la partita parte SOLO da questo pulsante (o Invio / Start del gamepad) -->
+    <!-- Controlli touch: movimento SOLO trascinando, FIRE per sparare -->
+    <div id="pad" class="zone"><span id="padLabel"></span></div>
+    <div id="fire" class="zone" aria-label="Fuoco"></div>
+
+    <!-- Home: la partita parte SOLO da START (o Invio / Start del gamepad) -->
     <button id="homeStart" aria-label="Inizia la partita">START</button>
-    <div id="homeHelp">
-      <div class="hh-title">COME SI GIOCA</div>
-      <div class="hh-row"><span class="hh-ico">◀ ▶</span> trascina nel riquadro per muoverti</div>
-      <div class="hh-row"><span class="hh-ico fire">●</span> tieni premuto FIRE per sparare</div>
-      <div class="hh-row"><span class="hh-ico">★</span> batti il record: resta salvato qui</div>
+    <div id="homeHelp" class="retro-box">
+      <div class="hh-title" data-px="COME SI GIOCA" data-col="Y"></div>
+      <div class="hh-row" data-px="TRASCINA PER MUOVERTI" data-col="C"></div>
+      <div class="hh-row" data-px="TIENI PREMUTO FIRE" data-col="R"></div>
+      <div class="hh-row" data-px="BATTI IL TUO RECORD" data-col="M"></div>
     </div>
 
-    <div id="settings" class="overlay hidden" role="dialog" aria-label="Impostazioni">
-      <div class="panel">
-        <h2>IMPOSTAZIONI</h2>
-        <label>Controlli
-          <select id="sControls"><option value="drag">Trascinamento</option><option value="buttons">Pulsanti ◀ ▶</option></select>
-        </label>
+    <!-- Menu di pausa -->
+    <div id="pauseMenu" class="overlay hidden" role="dialog" aria-label="Pausa">
+      <div class="retro-panel menu">
+        <div class="menu-title" data-px="PAUSA" data-col="Y"></div>
+        <button id="mHome" class="rbtn big"></button>
+        <button id="mMusic" class="rbtn big"></button>
+        <button id="mResume" class="rbtn big primary"></button>
+      </div>
+    </div>
+
+    <div id="settings" class="overlay hidden" role="dialog" aria-label="Opzioni">
+      <div class="retro-panel">
+        <div class="menu-title" data-px="OPZIONI" data-col="Y"></div>
         <label>Trascinamento
-          <select id="sDragMode"><option value="relative">Relativo</option><option value="absolute">Assoluto</option></select>
+          <select id="sDragMode"><option value="relative">Relativo (sposta di quanto muovi il dito)</option><option value="absolute">Assoluto (la nave segue il dito)</option></select>
         </label>
         <label>Sensibilità <span id="sSensV"></span>
           <input id="sSens" type="range" min="0.5" max="3" step="0.1" />
         </label>
         <label class="row"><input id="sAuto" type="checkbox" /> Auto-fire tenendo premuto</label>
+        <label class="row"><input id="sSfx" type="checkbox" /> Effetti sonori</label>
         <label class="row"><input id="sVibe" type="checkbox" /> Vibrazione (Android)</label>
         <label class="row"><input id="sCrt" type="checkbox" /> Effetto CRT / scanline</label>
-        <button id="sClose" class="ctl wide">CHIUDI</button>
+        <button id="sClose" class="rbtn big" data-px="CHIUDI" data-col="Y"></button>
       </div>
     </div>
 
     <div id="install" class="overlay hidden">
-      <div class="panel">
-        <h2>GIOCA A SCHERMO INTERO</h2>
+      <div class="retro-panel">
+        <div class="menu-title" data-px="SCHERMO INTERO" data-col="Y"></div>
         <p id="installText"></p>
-        <button id="installBtn" class="ctl wide hidden">INSTALLA</button>
-        <button id="installClose" class="ctl wide">OK</button>
+        <button id="installBtn" class="rbtn big hidden" data-px="INSTALLA" data-col="L"></button>
+        <button id="installClose" class="rbtn big" data-px="OK" data-col="Y"></button>
       </div>
     </div>
 

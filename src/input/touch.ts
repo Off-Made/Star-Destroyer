@@ -3,13 +3,12 @@
  * - Pad di trascinamento: relativo (sposta di quanto muovi il dito × sensibilità)
  *   oppure assoluto (la nave va dove si trova il dito lungo la larghezza del pad).
  * - Pulsante FIRE grande con auto-fire tenendo premuto.
- * - Modalità alternativa con pulsanti ◀ ▶.
+ * Da telefono il movimento avviene SOLO trascinando il dito (nessun pulsante direzionale).
  */
 import type { Input } from '../game/game';
 import { SCREEN_W } from '../config';
 
 export interface TouchSettings {
-  controls: 'drag' | 'buttons';
   dragMode: 'relative' | 'absolute';
   sensitivity: number;
 }
@@ -20,8 +19,6 @@ export class TouchControls {
   private dragAcc = 0;
   private absX = NaN;
   private fireIds = new Set<number>();
-  private leftIds = new Set<number>();
-  private rightIds = new Set<number>();
   private firePulse = false;
   /** px CSS per pixel logico del canvas (aggiornato dal layout). */
   cssPerPixel = 2;
@@ -30,15 +27,11 @@ export class TouchControls {
   constructor(
     private pad: HTMLElement,
     fire: HTMLElement,
-    left: HTMLElement,
-    right: HTMLElement,
     private settings: TouchSettings,
     private vibrate: () => void,
   ) {
     this.bindPad();
     this.bindHold(fire, this.fireIds, () => { this.firePulse = true; this.vibrate(); });
-    this.bindHold(left, this.leftIds);
-    this.bindHold(right, this.rightIds);
   }
 
   private bindPad() {
@@ -46,7 +39,7 @@ export class TouchControls {
     pad.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.onAnyTouch?.();
-      if (this.settings.controls !== 'drag' || this.dragId !== -1) return;
+      if (this.dragId !== -1) return;
       this.dragId = e.pointerId;
       this.lastX = e.clientX;
       try { pad.setPointerCapture(e.pointerId); } catch { /* */ }
@@ -99,8 +92,6 @@ export class TouchControls {
   }
 
   apply(inp: Input) {
-    if (this.leftIds.size) inp.left = true;
-    if (this.rightIds.size) inp.right = true;
     if (this.fireIds.size) inp.fire = true;
     if (this.firePulse) { inp.firePressed = true; this.firePulse = false; }
     if (this.dragAcc !== 0) { inp.drag += this.dragAcc; this.dragAcc = 0; }
@@ -111,6 +102,6 @@ export class TouchControls {
 
   reset() {
     this.dragId = -1; this.dragAcc = 0; this.absX = NaN;
-    this.fireIds.clear(); this.leftIds.clear(); this.rightIds.clear();
+    this.fireIds.clear();
   }
 }

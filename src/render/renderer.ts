@@ -55,7 +55,6 @@ export class Renderer {
     this.effects(g);
     this.hud(g, true);
     this.messages(g);
-    if (this.paused) this.textC('PAUSE', 150, 'Y');
     if (g.mode === 'demo') {
       this.textC('DEMO PLAY', 128, 'C');
       if ((g.frame >> 5) & 1) this.textC(this.startLabel === 'TAP' ? 'TAP TO START' : 'PUSH START', 140, 'Y');

@@ -37,45 +37,60 @@ body { position: fixed; inset: 0; height: 100dvh; }
 #app.crt #crt { display: block; }
 #app.crt #screen { filter: saturate(1.15) contrast(1.05); }
 
-/* ── controlli ── */
+/* ── Grafica retrò dell'interfaccia ──
+   Cornici "a pixel" con angoli a gradino (4 box-shadow), nessun arrotondamento,
+   solo colori della palette del gioco. Le scritte sono canvas in pixel font (.px). */
+:root { --blue: #2f5bff; --navy: #1b2a8a; --yellow: #ffe63a; --cyan: #38e8ff; --red: #ff2f45; --px: 3px; }
+.px { display: block; height: 100%; width: auto; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
+
+.rbtn {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  margin: var(--px); padding: 0; height: 40px;
+  background: #000; border: 0; border-radius: 0; color: transparent; font-size: 0;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--blue), 0 var(--px) 0 0 var(--blue),
+              calc(-1 * var(--px)) 0 0 0 var(--blue), var(--px) 0 0 0 var(--blue),
+              inset 0 0 0 var(--px) var(--navy);
+  touch-action: manipulation; cursor: pointer;
+}
+.rbtn .px { height: 18px; }
+.rbtn:active, .rbtn.pressed { background: var(--navy); }
+.rbtn:focus-visible { outline: 2px dashed var(--yellow); outline-offset: 5px; }
+.rbtn.big { width: 100%; height: 52px; margin: 10px 0; }
+.rbtn.big .px { height: 24px; }
+.rbtn.primary { box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--yellow), 0 var(--px) 0 0 var(--yellow),
+                calc(-1 * var(--px)) 0 0 0 var(--yellow), var(--px) 0 0 0 var(--yellow),
+                inset 0 0 0 var(--px) #6a4b00; }
+.rbtn.icon { position: absolute; display: none; margin: 0; background: transparent; box-shadow: none; z-index: 6; }
+.rbtn.icon .px { height: 100%; }
+.rbtn.icon:active { filter: brightness(1.5); background: transparent; }
+
 .zone, #bar { position: absolute; display: none; }
 #app.touch .zone { display: flex; }
-#app.touch.buttons-mode #pad { display: none; }
-#app.touch:not(.buttons-mode) .dir { display: none; }
-#bar { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+#bar { display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+#bar .rbtn { flex: 1; }
+#app:not(.home) #bar { display: none; }
+#app:not(.home) #bPause { display: flex; }
 
-.zone {
-  align-items: center; justify-content: center;
-  border-radius: 18px;
-  font: 700 13px ui-monospace, monospace; letter-spacing: .12em;
-  color: #6f7cff;
-  touch-action: none;
-}
+.zone { align-items: center; justify-content: center; touch-action: none; }
+/* zona di trascinamento: schermo "a griglia" stile terminale, senza frecce */
 #pad {
-  background: linear-gradient(180deg, rgba(40,50,140,.18), rgba(40,50,140,.32));
-  border: 1px solid rgba(110,124,255,.35);
+  background:
+    repeating-linear-gradient(0deg, rgba(47,91,255,.10) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, rgba(47,91,255,.10) 0 1px, transparent 1px 6px),
+    #000;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--navy), 0 var(--px) 0 0 var(--navy),
+              calc(-1 * var(--px)) 0 0 0 var(--navy), var(--px) 0 0 0 var(--navy);
+  margin: var(--px);
 }
-#pad.active { background: rgba(60,80,220,.4); color: #b9c2ff; }
-.dir { background: rgba(40,50,140,.3); border: 1px solid rgba(110,124,255,.35); font-size: 30px; }
-.dir.active { background: rgba(60,80,220,.55); color: #fff; }
-#fire {
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ff6b7d, #c3122b 60%, #6a0614);
-  border: 3px solid #ff9aa6;
-  color: #fff; font-size: 18px;
-  box-shadow: 0 0 0 4px rgba(255,47,69,.15), 0 6px 18px rgba(0,0,0,.6);
-}
-#fire.active { transform: scale(.94); filter: brightness(1.3); }
-
-.ctl {
-  flex: 1; min-height: 36px; padding: 6px 10px;
-  background: #0b0f2e; color: #9fb0ff; border: 1px solid #2f3a8a; border-radius: 10px;
-  font: 700 13px ui-monospace, monospace; letter-spacing: .08em;
-  touch-action: manipulation;
-}
-.ctl:active { background: #1d2a7a; color: #fff; }
-.ctl.on { color: #ffe63a; }
-.ctl.wide { width: 100%; margin-top: 12px; min-height: 44px; }
+#pad .px { height: 16px; opacity: .55; }
+#pad.active { box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--cyan), 0 var(--px) 0 0 var(--cyan),
+                          calc(-1 * var(--px)) 0 0 0 var(--cyan), var(--px) 0 0 0 var(--cyan); }
+#pad.active .px { opacity: 1; }
+/* FIRE: pulsante in pixel art (due canvas, normale e premuto) */
+#fire { background: transparent; }
+#fire .px { width: 100%; height: 100%; }
+#fire .px.down, #fire.active .px.up { display: none; }
+#fire.active .px.down { display: block; }
 
 /* ── overlay ── */
 .overlay {
@@ -95,33 +110,39 @@ body { position: fixed; inset: 0; height: 100dvh; }
 #homeStart:focus-visible { outline: 2px dashed #ffe63a; outline-offset: 2px; }
 #app.home #homeStart { display: block; }
 #app.home .zone { display: none !important; }
-#app.home #bStart, #app.home #bPause { display: none; }
+#app.home #bPause { display: none !important; }
+.retro-box, .retro-panel {
+  background: #000;
+  box-shadow: 0 calc(-1 * var(--px)) 0 0 var(--blue), 0 var(--px) 0 0 var(--blue),
+              calc(-1 * var(--px)) 0 0 0 var(--blue), var(--px) 0 0 0 var(--blue),
+              inset 0 0 0 var(--px) var(--navy);
+}
 #homeHelp {
-  position: absolute; display: none; flex-direction: column; justify-content: center; gap: 8px;
-  padding: 10px 14px; overflow: hidden; border: 1px solid rgba(110,124,255,.35); border-radius: 16px;
-  background: rgba(20,26,80,.25); color: #b9c2ff; font: clamp(11px, 3.4vw, 14px)/1.3 ui-monospace, monospace;
+  position: absolute; display: none; flex-direction: column; justify-content: center; align-items: center; gap: 10px;
+  padding: 10px 14px; overflow: hidden;
 }
 #app.home.touch.portrait #homeHelp { display: flex; }
-#homeHelp.compact { gap: 3px; padding: 6px 12px; }
+#homeHelp .px { height: 14px; }
+#homeHelp .hh-title .px { height: 18px; }
+#homeHelp.compact { gap: 6px; padding: 6px 10px; }
 #homeHelp.compact .hh-title { display: none; }
-.hh-title { color: #ffe63a; font-weight: 700; letter-spacing: .16em; text-align: center; }
-.hh-row { display: flex; gap: 10px; align-items: center; }
-.hh-ico { flex: 0 0 38px; text-align: center; color: #6f7cff; font-weight: 700; }
-.hh-ico.fire { color: #ff2f45; font-size: 18px; }
+#homeHelp.compact .px { height: 12px; }
 
-.panel {
-  width: min(92vw, 360px); max-height: 90%; overflow: auto;
-  background: #05071a; border: 2px solid #2f5bff; border-radius: 14px; padding: 18px;
-  font: 14px ui-monospace, monospace; color: #cfd6ff;
-  touch-action: pan-y;
+.retro-panel {
+  width: min(86vw, 340px); max-height: 90%; overflow: auto; padding: 20px 22px;
+  font: 14px ui-monospace, monospace; color: #cfd6ff; touch-action: pan-y;
 }
-.panel h2 { margin: 0 0 14px; font-size: 16px; color: #ffe63a; letter-spacing: .12em; text-align: center; }
-.panel label { display: block; margin: 12px 0; }
-.panel label.row { display: flex; align-items: center; gap: 10px; }
-.panel select, .panel input[type=range] { display: block; width: 100%; margin-top: 6px; }
-.panel select { background: #0b0f2e; color: #fff; border: 1px solid #2f3a8a; border-radius: 8px; padding: 8px; font: inherit; }
-.panel input[type=checkbox] { width: 22px; height: 22px; accent-color: #ff2f45; }
-.panel p { line-height: 1.5; }
+.retro-panel.menu { width: min(78vw, 300px); }
+.menu-title { display: flex; justify-content: center; height: 32px; margin: 4px 0 14px; }
+.menu-title .px { height: 100%; }
+.retro-panel label { display: block; margin: 12px 0; }
+.retro-panel label.row { display: flex; align-items: center; gap: 10px; }
+.retro-panel select, .retro-panel input[type=range] { display: block; width: 100%; margin-top: 6px; }
+.retro-panel select { background: #000; color: var(--yellow); border: var(--px) solid var(--blue); border-radius: 0; padding: 8px; font: inherit; }
+.retro-panel input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--red); border-radius: 0; }
+.retro-panel input[type=range] { accent-color: var(--yellow); }
+.retro-panel p { line-height: 1.5; }
+#pauseMenu { background: rgba(0,0,0,.72); }
 
 #rotate {
   position: absolute; left: 0; right: 0; bottom: max(8px, env(safe-area-inset-bottom));
